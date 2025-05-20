@@ -2,10 +2,11 @@ package component
 
 import (
 	"fmt"
-	"github.com/extrame/syler/config"
-	"github.com/extrame/syler/i"
 	"log"
 	"net/http"
+
+	"daoxuans/syler/config"
+	"daoxuans/syler/i"
 )
 
 func StartHttp() {
@@ -45,6 +46,6 @@ func StartHttp() {
 	log.Printf("listen http on %d\n", *config.HttpPort)
 	err := http.ListenAndServe(fmt.Sprintf(":%d", *config.HttpPort), nil)
 	if err != nil {
-		log.Println(err)
+		log.Fatalf("Failed to start HTTP server on port %d: %v", *config.HttpPort, err)
 	}
 }

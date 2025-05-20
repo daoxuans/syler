@@ -5,8 +5,9 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"fmt"
-	"github.com/extrame/syler/huawei/portal"
 	"net"
+
+	"daoxuans/syler/huawei/portal"
 )
 
 type T_Message struct {

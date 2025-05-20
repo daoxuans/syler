@@ -2,13 +2,14 @@ package component
 
 import (
 	"fmt"
-	"github.com/extrame/syler/config"
-	"github.com/extrame/syler/huawei/portal"
-	"github.com/extrame/syler/huawei/portal/v1"
-	"github.com/extrame/syler/huawei/portal/v2"
 	"log"
 	"net"
 	"net/http"
+
+	"daoxuans/syler/config"
+	"daoxuans/syler/huawei/portal"
+	v1 "daoxuans/syler/huawei/portal/v1"
+	v2 "daoxuans/syler/huawei/portal/v2"
 )
 
 func StartHuawei() {
@@ -38,7 +39,7 @@ func Auth(userip net.IP, basip net.IP, timeout uint32, username, userpwd []byte)
 		if cres, ok := res.(portal.ChallengeRes); ok {
 			res, err = portal.ChapAuth(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort, username, userpwd, res.ReqId(), cres.GetChallenge())
 			if err == nil {
-				res, err = portal.AffAckAuth(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort, res.SerialId(), res.ReqId())
+				_, err = portal.AffAckAuth(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort, res.SerialId(), res.ReqId())
 			}
 		}
 	}

@@ -13,7 +13,7 @@ var conn *net.UDPConn
 var cb_fallback func(Message, net.IP)
 var Ver Version
 var expect = make(map[uint16]chan Message)
-var timeout = fmt.Errorf("请求超时")
+var errTimeout = fmt.Errorf("请求超时")
 var Timeout = 15
 
 const (
@@ -73,10 +73,13 @@ func ListenAndService(addr string) (err error) {
 	var ad *net.UDPAddr
 	ad, err = net.ResolveUDPAddr("udp", addr)
 	if err != nil {
+		log.Fatalf("Failed to resolve UDP address: %v", err)
 		return
 	}
+
 	conn, err = net.ListenUDP("udp", ad)
 	if err != nil {
+		log.Fatalf("Failed to listen on UDP port: %v", err)
 		return
 	}
 
@@ -119,7 +122,7 @@ func Send(mess Message, dest net.IP, port int, secret string, sync bool) (Messag
 	case res := <-c:
 		return res, res.CheckFor(mess, secret)
 	case <-time.After(time.Duration(Timeout) * time.Second):
-		return nil, timeout
+		return nil, errTimeout
 	}
 }
 

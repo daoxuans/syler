@@ -3,15 +3,17 @@ package component
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
-	"github.com/extrame/syler/config"
-	"github.com/extrame/syler/i"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strconv"
+
+	"daoxuans/syler/config"
+	"daoxuans/syler/i"
 )
 
 type AuthInfo struct {
@@ -25,6 +27,22 @@ type AuthServer struct {
 	authing_user map[string]*AuthInfo
 }
 
+type Response struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+func jsonResponse(w http.ResponseWriter, code int, message string, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(Response{
+		Code:    code,
+		Message: message,
+		Data:    data,
+	})
+}
+
 var BASIC_SERVICE = new(AuthServer)
 
 func InitBasic() {
@@ -33,28 +51,30 @@ func InitBasic() {
 
 func (a *AuthServer) AuthChap(username []byte, chapid byte, chappwd, chapcha []byte, userip net.IP, usermac net.HardwareAddr) (err error, to uint32) {
 	if info, ok := a.authing_user[userip.String()]; ok {
-		if bytes.Compare(username, info.Name) == 0 && i.TestChapPwd(chapid, info.Pwd, chapcha, chappwd) {
+		if bytes.Equal(username, info.Name) && i.TestChapPwd(chapid, info.Pwd, chapcha, chappwd) {
 			to = info.Timeout
 			info.Mac = usermac
 			return
 		}
 	} else {
-		err = fmt.Errorf("radius auth - no such user ", userip.String())
+		err = fmt.Errorf("radius auth - no such user %s", userip.String())
 	}
 	return
 }
 
-func (a *AuthServer) AuthMac(mac net.HardwareAddr, userip net.IP) (error, uint32) {
-	return fmt.Errorf("unsupported mac auth on %s", userip.String()), 0
+func (a *AuthServer) AuthMac(mac net.HardwareAddr, userip net.IP) (err error, to uint32) {
+	err = fmt.Errorf("unsupported mac auth on %s", userip.String())
+	to = 0
+	return
 }
 
 func (a *AuthServer) AuthPap(username, userpwd []byte, userip net.IP) (err error, to uint32) {
 	if info, ok := a.authing_user[userip.String()]; ok {
-		if bytes.Compare(info.Pwd, userpwd) == 0 {
+		if bytes.Equal(info.Pwd, userpwd) {
 			to = info.Timeout
 		}
 	} else {
-		err = fmt.Errorf("radius auth - no such user ", userip.String())
+		err = fmt.Errorf("radius auth - no such user %s", userip.String())
 	}
 	return
 }
@@ -78,7 +98,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		userip := net.ParseIP(userip_str)
-		if *config.UseRemoteIpAsUserIp == true {
+		if *config.UseRemoteIpAsUserIp {
 			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 			userip = net.ParseIP(ip)
 		} else if userip == nil {
@@ -102,7 +122,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 					if *config.RandomUser {
 						full_username, userpwd = a.RandomUser(userip, basip, *config.HuaweiDomain, uint32(to))
 					} else {
-						w.WriteHeader(http.StatusBadRequest)
+						jsonResponse(w, http.StatusBadRequest, "username required", nil)
 						return
 					}
 				} else {
@@ -110,9 +130,11 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 					a.authing_user[userip.String()] = &AuthInfo{username, userpwd, []byte{}, uint32(to)}
 				}
 				if err = Auth(userip, basip, uint32(to), []byte(full_username), userpwd); err == nil {
-					w.Write([]byte(a.authing_user[userip.String()].Mac.String()))
-					return
+					jsonResponse(w, http.StatusOK, "login successful", map[string]string{"mac": a.authing_user[userip.String()].Mac.String()})
+				} else {
+					jsonResponse(w, http.StatusInternalServerError, err.Error(), nil)
 				}
+				return
 			} else {
 				err = fmt.Errorf("NAS IP配置错误")
 			}
@@ -122,28 +144,33 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Println("login error: ", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		jsonResponse(w, http.StatusBadRequest, err.Error(), nil)
 	}
 }
 
-//处理Logout请求
+// 处理Logout请求
 func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	var err error
-	nas := r.FormValue("nasip") //TODO
+	nas := r.FormValue("nasip")
 	userip_str := r.FormValue("userip")
-	if userip := net.ParseIP(userip_str); userip != nil {
-		if basip := net.ParseIP(nas); basip != nil {
-			if _, err = Logout(userip, *config.HuaweiSecret, basip); err == nil {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-		} else {
-			err = fmt.Errorf("Parse Ip err from %s", nas)
-		}
-	} else {
-		err = fmt.Errorf("Parse Ip err from %s", userip_str)
+
+	userip := net.ParseIP(userip_str)
+	if userip == nil {
+		jsonResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid user IP: %s", userip_str), nil)
+		return
 	}
+
+	basip := net.ParseIP(nas)
+	if basip == nil {
+		jsonResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid NAS IP: %s", nas), nil)
+		return
+	}
+
+	if _, err := Logout(userip, *config.HuaweiSecret, basip); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, "logout successful", nil)
 }
 
 func (a *AuthServer) HandleRoot(w http.ResponseWriter, r *http.Request) {

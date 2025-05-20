@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/binary"
-	"github.com/extrame/syler/huawei/portal"
 	"net"
+
+	"daoxuans/syler/huawei/portal"
 )
 
 type Version struct{}

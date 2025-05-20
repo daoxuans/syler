@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/extrame/syler/huawei/portal"
 	"net"
+
+	"daoxuans/syler/huawei/portal"
 )
 
 type T_Message struct {
@@ -97,7 +98,7 @@ func (t *T_Message) CheckFor(msg portal.Message, secret string) error {
 			des = "此用户请求认证失败（发生错误）"
 		}
 	}
-	return fmt.Errorf("No. %d:%s", t.Header.ErrCode, des)
+	return fmt.Errorf("no. %d:%s", t.Header.ErrCode, des)
 }
 
 type T_Header struct {
