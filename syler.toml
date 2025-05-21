@@ -14,5 +14,4 @@ domain="syler"
 callback_logout="http://localhost/test"
 remote_ip_as_user_ip=true
 nas_ip=""
-login_page="./pages/login.html"
 logfile="./syler.log"

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"path/filepath"
+	"runtime"
 
 	"daoxuans/syler/component"
 	"daoxuans/syler/config"
@@ -19,6 +20,8 @@ func main() {
 	// go func() {
 	// 	res, err := v1.Challenge(net.IPv4(192, 168, 10, 254), *config.PortalSecret, net.IPv4(192, 168, 56, 2))
 	// }()
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	path := flag.String("config", "./syler.toml", "设置配置文件的路径")
 	component.InitBasic()

@@ -4,12 +4,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"daoxuans/syler/config"
 	"daoxuans/syler/i"
 )
 
 func StartHttp() {
+
+	http.HandleFunc("/portal", func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			i.ErrorWrap(w)
+		}()
+		if handler, ok := i.ExtraAuth.(i.HttpPortalHandler); ok {
+			handler.HandlePortal(w, r)
+		} else {
+			BASIC_SERVICE.HandlePortal(w, r)
+		}
+	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			i.ErrorWrap(w)
@@ -43,9 +55,18 @@ func StartHttp() {
 			BASIC_SERVICE.HandleRoot(w, r)
 		}
 	})
+
+	server := &http.Server{
+		Addr:              fmt.Sprintf(":%d", *config.HttpPort),
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+	}
+
 	log.Printf("listen http on %d\n", *config.HttpPort)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", *config.HttpPort), nil)
-	if err != nil {
+
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start HTTP server on port %d: %v", *config.HttpPort, err)
 	}
 }

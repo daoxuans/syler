@@ -20,12 +20,17 @@ type MacAuthService interface {
 	AuthMac(mac net.HardwareAddr, userip net.IP) (error, uint32)
 }
 
-//通过http方式请求Login
+// 通过http方式请求Portal
+type HttpPortalHandler interface {
+	HandlePortal(w http.ResponseWriter, r *http.Request)
+}
+
+// 通过http方式请求Login
 type HttpLoginHandler interface {
 	HandleLogin(w http.ResponseWriter, r *http.Request)
 }
 
-//通过http方式请求Logout
+// 通过http方式请求Logout
 type HttpLogoutHandler interface {
 	HandleLogout(w http.ResponseWriter, r *http.Request)
 }
@@ -34,7 +39,7 @@ type HttpRootHandler interface {
 	HandleRoot(w http.ResponseWriter, r *http.Request)
 }
 
-//通过该接口监听更多的http方法
+// 通过该接口监听更多的http方法
 type ExtraHttpHandler interface {
 	AddExtraHttp()
 }
@@ -49,7 +54,7 @@ type RadiusAcctStopService interface {
 
 var ExtraAuth interface{}
 
-//utils function to test agent chap password
+// utils function to test agent chap password
 func TestChapPwd(chapid byte, testedpwd, chapcha, chappwd []byte) bool {
 	hash := md5.New()
 	hash.Write([]byte{chapid})
@@ -64,7 +69,7 @@ func TestChapPwd(chapid byte, testedpwd, chapcha, chappwd []byte) bool {
 	return true
 }
 
-//UTILS for wrap the http error
+// UTILS for wrap the http error
 func ErrorWrap(w http.ResponseWriter) {
 	if e := recover(); e != nil {
 		log.Print("panic:", e, "\n", string(debug.Stack()))

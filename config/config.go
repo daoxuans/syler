@@ -1,9 +1,10 @@
 package config
 
 import (
-	toml "github.com/extrame/go-toml-config"
 	"net"
 	"strings"
+
+	toml "github.com/extrame/go-toml-config"
 )
 
 var (
@@ -23,7 +24,6 @@ var (
 	HuaweiSecret        = toml.String("huawei.secret", "testing123")
 	HuaweiNasPort       = toml.Int("huawei.nas_port", 2000)
 	HuaweiDomain        = toml.String("huawei.domain", "huawei.com")
-	LoginPage           = toml.String("basic.login_page", "./login.html")
 	NasIp               = toml.String("basic.nas_ip", "")
 	DefaultTimeout      = toml.Uint64("basic.default_timeout", 0)
 	AuthType            = toml.String("radius.auth_type", "random")

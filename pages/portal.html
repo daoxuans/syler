@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WiFi认证门户</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            margin: 1rem;
+        }
+
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.8rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            input[type="text"],
+            input[type="password"],
+            button {
+                padding: 0.7rem;
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .logo i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-text {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .input-icon {
+            position: relative;
+        }
+
+        .input-icon input {
+            padding-left: 2.5rem;
+        }
+
+        .input-icon i {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        .remember-me input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
+        .terms {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: #718096;
+        }
+
+        .terms a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .terms a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            margin-left: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading.show {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        .error-message {
+            display: none;
+            color: #e53e3e;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            position: relative;
+            background: white;
+            margin: 15% auto;
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .close-button {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            font-size: 1.5rem;
+            color: #718096;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                margin: 5% auto;
+                width: 95%;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-wifi"></i>
+        </div>
+        <h1>WiFi认证</h1>
+        <p class="welcome-text">欢迎使用网络服务，请登录以继续访问互联网</p>
+        
+        <form id="loginForm" action="/login" method="POST">
+            <input type="hidden" name="nasip" value="{{.NasIP}}">
+            <input type="hidden" name="userip" value="{{.UserIP}}">
+            <input type="hidden" name="timeout" value="{{.Timeout}}">
+            
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <div class="input-icon">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" name="username" required 
+                           placeholder="请输入用户名" autocomplete="username">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="userpwd">密码</label>
+                <div class="input-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="userpwd" name="userpwd" required 
+                           placeholder="请输入密码" autocomplete="current-password">
+                </div>
+            </div>
+
+            <div class="remember-me">
+                <input type="checkbox" id="remember" name="remember">
+                <label for="remember">记住我的登录状态</label>
+            </div>
+            
+            <button type="submit">
+                登录
+                <i class="fas fa-spinner loading"></i>
+            </button>
+
+            <div class="error-message">
+                用户名或密码错误，请重试
+            </div>
+
+            <div class="terms">
+                登录即表示您同意
+                <a href="#">服务条款</a>
+                和
+                <a href="#">隐私政策</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Terms Modal -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button">&times;</button>
+            <h2 style="margin-bottom: 1rem">服务条款</h2>
+            <div style="color: #4a5568; line-height: 1.6">
+                <p>1. 服务说明</p>
+                <p>本服务为无线网络接入服务，用户需要遵守相关法律法规。</p>
+                <p>2. 用户责任</p>
+                <p>用户应当对账号和密码保密，不得从事违法活动。</p>
+                <p>3. 服务变更</p>
+                <p>我们保留随时修改或终止服务的权利。</p>
+                <!-- 添加更多条款内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button">&times;</button>
+            <h2 style="margin-bottom: 1rem">隐私政策</h2>
+            <div style="color: #4a5568; line-height: 1.6">
+                <p>1. 信息收集</p>
+                <p>我们收集的信息包括：用户名、MAC地址、设备信息等。</p>
+                <p>2. 信息使用</p>
+                <p>收集的信息将用于提供网络服务和改善用户体验。</p>
+                <p>3. 信息保护</p>
+                <p>我们采取适当措施保护用户信息的安全。</p>
+                <!-- 添加更多隐私政策内容 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const button = this.querySelector('button');
+            const loading = button.querySelector('.loading');
+            const errorMessage = document.querySelector('.error-message');
+            
+            loading.classList.add('show');
+            button.disabled = true;
+            errorMessage.style.display = 'none';
+        });
+
+        // Modal functionality
+        function setupModal(triggerSelector, modalId) {
+            const trigger = document.querySelector(triggerSelector);
+            const modal = document.getElementById(modalId);
+            const closeBtn = modal.querySelector('.close-button');
+
+            trigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                modal.classList.add('show');
+            });
+
+            closeBtn.addEventListener('click', function() {
+                modal.classList.remove('show');
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        }
+
+        // Setup both modals
+        setupModal('.terms a:nth-child(1)', 'termsModal');
+        setupModal('.terms a:nth-child(2)', 'privacyModal');
+    </script>
+</body>
+</html>
