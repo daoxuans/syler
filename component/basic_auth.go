@@ -260,7 +260,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			Message string
 		}{
 			Title:   "登录成功",
-			Message: "您可以点击窗口右上角完成",
+			Message: "您可以点击窗口右上角完成，或点击窗口关闭",
 		},
 	}, "result.html")
 }
