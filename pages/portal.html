@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WiFi认证门户</title>
+    <title>{{.Data.Title}}</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -243,12 +243,12 @@
             <i class="fas fa-wifi"></i>
         </div>
         <h1>WiFi认证</h1>
-        <p class="welcome-text">欢迎使用网络服务，请登录以继续访问互联网</p>
+        <p class="welcome-text">{{.Data.Message}}</p>
         
         <form id="loginForm" action="/login" method="POST">
-            <input type="hidden" name="nasip" value="{{.NasIP}}">
-            <input type="hidden" name="userip" value="{{.UserIP}}">
-            <input type="hidden" name="timeout" value="{{.Timeout}}">
+            <input type="hidden" name="nasip" value="{{.Data.NasIP}}">
+            <input type="hidden" name="userip" value="{{.Data.UserIP}}">
+            <input type="hidden" name="timeout" value="{{.Data.Timeout}}">
             
             <div class="form-group">
                 <label for="username">用户名</label>
