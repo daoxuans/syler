@@ -63,10 +63,10 @@ WX5000
 	        version = 2
 	        secret = "syler"
 	        nas_port = 2000
-	        domain = "1.cn"
+	        domain = "1.cn"                     #不为空则加到用户名后缀 @domain
 	        timeout = 15
 	[basic]
 	        callback_logout = "http://10.10.100.68"   #当交换机向服务器发送用户下线等主动消息时，服务器转发的目的url
 	        logfile = "./debug.log"             #日志文件
-	        remote_ip_as_user_ip = true         #是否使用请求的ip作为用户ip
-	        nas_ip = "10.10.100.253"
+	        remote_ip_as_user_ip = true         #是否使用请求的L3 IP作为用户ip，否则请求需要带上userip参数
+	        nas_ip = "10.10.100.253"            #强制所有请求的nasip为该值，否则为请求头中的nasip

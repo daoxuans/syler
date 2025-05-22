@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 
 	"daoxuans/syler/config"
 	"daoxuans/syler/huawei/portal"
@@ -13,11 +12,10 @@ import (
 )
 
 func StartHuawei() {
-	portal.Timeout = *config.HuaweiTimeout
 	portal.RegisterFallBack(func(msg portal.Message, src net.IP) {
 		log.Println(" type: ", msg.Type())
 		if msg.Type() == portal.NTF_LOGOUT {
-			BASIC_SERVICE.NotifyLogout(msg.UserIp(), src)
+			NotifyLogout(msg, src)
 		}
 	})
 	if *config.HuaweiVersion == 1 {
@@ -33,7 +31,7 @@ func Challenge(userip net.IP, basip net.IP) (response portal.Message, err error)
 	return portal.Challenge(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort)
 }
 
-func Auth(userip net.IP, basip net.IP, timeout uint32, username, userpwd []byte) (err error) {
+func Auth(userip net.IP, basip net.IP, username, userpwd []byte) (err error) {
 	var res portal.Message
 	if res, err = Challenge(userip, basip); err == nil {
 		if cres, ok := res.(portal.ChallengeRes); ok {
@@ -50,10 +48,6 @@ func Logout(userip net.IP, secret string, basip net.IP) (response portal.Message
 	return portal.Logout(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort)
 }
 
-func callBackOffline(url string, userip, netip net.IP) {
-	if url != "" {
-		if resp, err := http.Get(url + "?userip=" + userip.String() + "&nas=" + netip.String()); err == nil {
-			defer resp.Body.Close()
-		}
-	}
+func NotifyLogout(msg portal.Message, src net.IP) {
+	portal.AckNtfLogout(msg.UserIp(), *config.HuaweiSecret, src, *config.HuaweiNasPort, msg.SerialId(), msg.ReqId())
 }

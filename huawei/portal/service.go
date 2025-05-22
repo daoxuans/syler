@@ -14,20 +14,21 @@ var cb_fallback func(Message, net.IP)
 var Ver Version
 var expect = make(map[uint16]chan Message)
 var errTimeout = fmt.Errorf("请求超时")
-var Timeout = 15
+var Timeout = 20 // Potal响应报文等待最大时长
 
 const (
-	_             = iota
-	REQ_CHALLENGE = iota
-	ACK_CHALLENGE = iota
-	REQ_AUTH      = iota
-	ACK_AUTH      = iota
-	REQ_LOGOUT    = iota
-	ACK_LOGOUT    = iota
-	AFF_ACK_AUTH  = iota
-	NTF_LOGOUT    = iota
-	REQ_INFO      = iota
-	ACK_INFO      = iota
+	_              = iota
+	REQ_CHALLENGE  = iota
+	ACK_CHALLENGE  = iota
+	REQ_AUTH       = iota
+	ACK_AUTH       = iota
+	REQ_LOGOUT     = iota
+	ACK_LOGOUT     = iota
+	AFF_ACK_AUTH   = iota
+	NTF_LOGOUT     = iota
+	REQ_INFO       = iota
+	ACK_INFO       = iota
+	ACK_NTF_LOGOUT = 0x0e
 )
 
 type Message interface {
@@ -59,6 +60,7 @@ type Version interface {
 	NewAffAckAuth(net.IP, string, uint16, uint16) Message
 	NewLogout(net.IP, string) Message
 	NewReqInfo(net.IP, string) Message
+	NewAckNtfLogout(net.IP, string, uint16, uint16) Message
 }
 
 func RegisterFallBack(f func(Message, net.IP)) {
@@ -149,6 +151,11 @@ func AffAckAuth(userip net.IP, secret string, basip net.IP, basport int, serial 
 func ReqInfo(userip net.IP, secret string, basip net.IP, basport int) (Message, error) {
 	ReqInfo := Ver.NewReqInfo(userip, secret)
 	return Send(ReqInfo, basip, basport, secret, true)
+}
+
+func AckNtfLogout(userip net.IP, secret string, basip net.IP, basport int, serial uint16, reqid uint16) (Message, error) {
+	AckNtfLogout := Ver.NewAckNtfLogout(userip, secret, serial, reqid)
+	return Send(AckNtfLogout, basip, basport, secret, false)
 }
 
 func NewSerialNo() uint16 {

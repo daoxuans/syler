@@ -55,6 +55,12 @@ func (v *Version) NewReqInfo(userip net.IP, secret string) portal.Message {
 	return msg
 }
 
+func (v *Version) NewAckNtfLogout(userip net.IP, secret string, serial uint16, reqid uint16) portal.Message {
+	msg := newMessage(portal.ACK_NTF_LOGOUT, userip, serial, reqid)
+	msg.AuthBy(secret)
+	return msg
+}
+
 func (v *Version) IsResponse(mesg portal.Message) bool {
 	switch mesg.Type() {
 	case 2, 4, 6, 10:

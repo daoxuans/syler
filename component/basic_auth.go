@@ -2,7 +2,6 @@ package component
 
 import (
 	"bytes"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -10,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,12 +20,12 @@ type AuthInfo struct {
 	Name    []byte
 	Pwd     []byte
 	Mac     net.HardwareAddr
-	Timeout uint32
+	Timeout uint32 //用户会话超时时间，单位秒
 }
 
 type AuthServer struct {
 	authing_user map[string]*AuthInfo
-	templates    map[string]*template.Template // 添加模板缓存
+	templates    map[string]*template.Template
 }
 
 type Response struct {
@@ -54,7 +52,6 @@ func InitBasic() {
 		templates:    make(map[string]*template.Template),
 	}
 
-	// 初始化时加载所有模板
 	templates := []string{"portal.html", "root.html"}
 	for _, tmpl := range templates {
 		t, err := template.ParseFiles(filepath.Join("pages", tmpl))
@@ -120,42 +117,38 @@ func (a *AuthServer) HandlePortal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	// 1. 验证请求方法
+	// Debug: 打印请求
+	log.Printf("Request Headers: %v", r.Header)
+	if err := r.ParseForm(); err != nil {
+		log.Printf("ParseForm error: %v", err)
+	} else {
+		log.Printf("Request Form: %v", r.Form)
+	}
+
 	if r.Method != http.MethodPost {
 		jsonResponse(w, http.StatusMethodNotAllowed, "仅支持POST请求", nil)
 		return
 	}
 
-	// 2. 验证来源
 	referer := r.Header.Get("Referer")
 	if referer == "" || !strings.Contains(r.Header.Get("Referer"), "/portal") {
 		jsonResponse(w, http.StatusForbidden, "请从Portal页面进行登录", nil)
 		return
 	}
 
-	// 3. 验证客户端
 	if !config.IsValidClient(r.RemoteAddr) {
 		jsonResponse(w, http.StatusForbidden, "该IP不在配置可允许的用户中", nil)
 		return
 	}
 
-	// 4. 解析请求参数
-	timeout := r.FormValue("timeout")
-	nas := r.FormValue("nasip")
+	nasip_str := r.FormValue("nasip")
 	if *config.NasIp != "" {
-		nas = *config.NasIp
+		nasip_str = *config.NasIp
 	}
 	userip_str := r.FormValue("userip")
 	username := []byte(r.FormValue("username"))
 	userpwd := []byte(r.FormValue("userpwd"))
 
-	// 5. 处理超时时间
-	to, err := strconv.ParseUint(timeout, 10, 32)
-	if err != nil || (to == 0 && *config.DefaultTimeout != 0) {
-		to = *config.DefaultTimeout
-	}
-
-	// 6. 处理用户IP
 	var userip net.IP
 	if *config.UseRemoteIpAsUserIp {
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -168,45 +161,42 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 7. 处理NAS IP
-	basip := net.ParseIP(nas)
-	if basip == nil {
+	nasip := net.ParseIP(nasip_str)
+	if nasip == nil {
 		jsonResponse(w, http.StatusBadRequest, "NAS IP配置错误", nil)
 		return
 	}
 
-	// 8. 处理用户认证
-	log.Printf("got a login request from %s on nas %s\n", userip, basip)
+	log.Printf("got a login request from %s on nas %s\n", userip, nasip)
 
 	var full_username []byte
 	if len(username) == 0 {
-		if !*config.RandomUser {
-			jsonResponse(w, http.StatusBadRequest, "username required", nil)
-			return
-		}
-		full_username, userpwd = a.RandomUser(userip, basip, *config.HuaweiDomain, uint32(to))
-	} else {
-		full_username = []byte(string(username) + "@" + *config.HuaweiDomain)
-		a.authing_user[userip.String()] = &AuthInfo{
-			Name:    username,
-			Pwd:     userpwd,
-			Mac:     []byte{},
-			Timeout: uint32(to),
-		}
+		jsonResponse(w, http.StatusBadRequest, "username required", nil)
+		return
 	}
 
-	// 9. 执行认证
-	if err = Auth(userip, basip, uint32(to), full_username, userpwd); err != nil {
+	if *config.HuaweiDomain != "" {
+		full_username = []byte(string(username) + "@" + *config.HuaweiDomain)
+	} else {
+		full_username = username
+	}
+
+	a.authing_user[userip.String()] = &AuthInfo{
+		Name:    username,
+		Pwd:     userpwd,
+		Mac:     []byte{},
+		Timeout: 3600,
+	}
+
+	if err := Auth(userip, nasip, full_username, userpwd); err != nil {
 		log.Printf("Authentication failed: %v", err)
 		jsonResponse(w, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
-	// 10. 返回成功响应
-	jsonResponse(w, http.StatusOK, "login successful", map[string]string{"mac": a.authing_user[userip.String()].Mac.String()})
+	jsonResponse(w, http.StatusOK, "login successful", nil)
 }
 
-// 处理Logout请求
 func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	nas := r.FormValue("nasip")
 	userip_str := r.FormValue("userip")
@@ -255,32 +245,10 @@ func (a *AuthServer) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *AuthServer) RandomUser(userip, nasip net.IP, domain string, timeout uint32) ([]byte, []byte) {
-	hash := md5.New()
-	hash.Write(userip)
-	hash.Write(nasip)
-	bts := hash.Sum(nil)
-	username := []byte(userip.String())
-	app := []byte("@" + domain)
-	if len(username)+len(app) > 32 {
-		username = username[:32-len(app)]
-	}
-	fname := append(username, app...)
-	userpwd := bts
-	a.authing_user[userip.String()] = &AuthInfo{username, userpwd, []byte{}, timeout}
-	return fname, userpwd
-}
-
 func (a *AuthServer) AcctStart(username []byte, userip net.IP, nasip net.IP, usermac net.HardwareAddr, sessionid string) error {
 	return nil
 }
 
 func (a *AuthServer) AcctStop(username []byte, userip net.IP, nasip net.IP, usermac net.HardwareAddr, sessionid string) error {
-	callBackOffline(*config.CallBackUrl, userip, nasip)
-	return nil
-}
-
-func (a *AuthServer) NotifyLogout(userip, nasip net.IP) error {
-	callBackOffline(*config.CallBackUrl, userip, nasip)
 	return nil
 }
