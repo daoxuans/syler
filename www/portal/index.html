@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WiFi 认证</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-box">
+            <!-- 登录表单 -->
+            <div id="loginSection" class="section">
+                <h1>WiFi 认证登录</h1>
+                <form id="loginForm" onsubmit="return false;">
+                    <input type="hidden" id="nasip" name="nasip">
+                    <input type="hidden" id="userip" name="userip">
+                    
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input type="text" id="username" name="username" required autocomplete="username">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="userpwd">密码</label>
+                        <input type="password" id="userpwd" name="userpwd" required>
+                    </div>
+                    
+                    <button type="submit" id="loginButton">登录</button>
+                </form>
+            </div>
+
+            <!-- 登出界面 -->
+            <div id="logoutSection" class="section hidden">
+                <h1>已认证</h1>
+                <div class="user-info">
+                    <p>用户名: <span id="displayUsername"></span></p>
+                    <p>IP地址: <span id="displayUserIP"></span></p>
+                    <p>有效期: <span id="displayTimeout"></span></p>
+                </div>
+                <button id="logoutButton">退出登录</button>
+            </div>
+
+            <!-- 消息提示 -->
+            <div id="message" class="message hidden"></div>
+        </div>
+    </div>
+    
+    <script src="/assets/js/utils.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/main.js"></script>
+</body>
+</html>

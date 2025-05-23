@@ -12,7 +12,7 @@ import (
 
 func StartHttp() {
 
-	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/login", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			i.ErrorWrap(w)
 		}()
@@ -22,7 +22,7 @@ func StartHttp() {
 			BASIC_SERVICE.HandleLogin(w, r)
 		}
 	})
-	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/logout", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			i.ErrorWrap(w)
 		}()
@@ -47,7 +47,7 @@ func StartHttp() {
 	})
 
 	server := &http.Server{
-		Addr:              fmt.Sprintf(":%d", *config.HttpPort),
+		Addr:              fmt.Sprintf("localhost:%d", *config.HttpPort),
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,

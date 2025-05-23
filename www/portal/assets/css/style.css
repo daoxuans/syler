@@ -1,0 +1,128 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.auth-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.section {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.section.hidden {
+    display: none;
+    opacity: 0;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #2d3748;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+}
+
+input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+button {
+    width: 100%;
+    padding: 0.75rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background: #5a67d8;
+}
+
+button:disabled {
+    background: #a0aec0;
+    cursor: not-allowed;
+}
+
+#logoutButton {
+    background: #e53e3e;
+}
+
+#logoutButton:hover {
+    background: #c53030;
+}
+
+.user-info {
+    background: #f7fafc;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+.user-info p {
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+}
+
+.message {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.message.error {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+.message.success {
+    background: #c6f6d5;
+    color: #2f855a;
+}
+
+.message.info {
+    background: #e2e8f0;
+    color: #2d3748;
+}
+
+.hidden {
+    display: none;
+}
