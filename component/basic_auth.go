@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -25,26 +23,16 @@ type AuthInfo struct {
 
 type AuthServer struct {
 	authing_user map[string]*AuthInfo
-	templates    map[string]*template.Template
 }
 
 type Response struct {
-	Code int         `json:"code"`
-	Data interface{} `json:"data,omitempty"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
-func handleResponse(w http.ResponseWriter, resp Response, template string) {
-	if template != "" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		if err := BASIC_SERVICE.templates[template].Execute(w, resp); err != nil {
-			log.Printf("Template execution failed: %v", err)
-		}
-		return
-	}
-
+func handleResponse(w http.ResponseWriter, httpStatus int, resp Response) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(resp.Code)
+	w.WriteHeader(httpStatus)
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -53,21 +41,6 @@ var BASIC_SERVICE = new(AuthServer)
 func InitBasic() {
 	BASIC_SERVICE = &AuthServer{
 		authing_user: make(map[string]*AuthInfo),
-		templates:    make(map[string]*template.Template),
-	}
-
-	templates := []string{
-		"portal.html",
-		"default.html",
-		"result.html",
-	}
-
-	for _, tmpl := range templates {
-		t, err := template.ParseFiles(filepath.Join("pages", tmpl))
-		if err != nil {
-			log.Fatalf("Failed to parse template %s: %v", tmpl, err)
-		}
-		BASIC_SERVICE.templates[tmpl] = t
 	}
 }
 
@@ -101,66 +74,25 @@ func (a *AuthServer) AuthPap(username, userpwd []byte, userip net.IP) (err error
 	return
 }
 
-func (a *AuthServer) HandlePortal(w http.ResponseWriter, r *http.Request) {
-	handleResponse(w, Response{
-		Code: http.StatusOK,
-		Data: struct {
-			Title   string
-			Message string
-			NasIP   string
-			UserIP  string
-			Timeout string
-		}{
-			Title:   "WiFi认证门户",
-			Message: "欢迎使用网络服务，请登录以继续访问互联网",
-			NasIP:   r.URL.Query().Get("nasip"),
-			UserIP:  r.URL.Query().Get("userip"),
-			Timeout: r.URL.Query().Get("timeout"),
-		},
-	}, "portal.html")
-}
-
 func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != http.MethodPost {
-		handleResponse(w, Response{
-			Code: http.StatusMethodNotAllowed,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登录失败",
-				Message: "仅支持POST请求",
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusMethodNotAllowed, Response{
+			Message: "仅支持POST请求",
+		})
 		return
 	}
 
 	if !strings.Contains(r.Header.Get("Referer"), "/portal") {
-		handleResponse(w, Response{
-			Code: http.StatusForbidden,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登录失败",
-				Message: "请从Portal页面进行登录",
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusForbidden, Response{
+			Message: "请从Portal页面进行登录",
+		})
 		return
 	}
 
 	if !config.IsValidClient(r.RemoteAddr) {
-		handleResponse(w, Response{
-			Code: http.StatusForbidden,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登录失败",
-				Message: "该IP不在配置可允许的用户中",
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusForbidden, Response{
+			Message: "该IP不在配置可允许的用户中",
+		})
 		return
 	}
 
@@ -179,32 +111,18 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	} else {
 		userip = net.ParseIP(userip_str)
 		if userip == nil {
-			handleResponse(w, Response{
-				Code: http.StatusBadRequest,
-				Data: struct {
-					Title   string
-					Message string
-				}{
-					Title:   "登录失败",
-					Message: "无效的用户IP地址",
-				},
-			}, "result.html")
+			handleResponse(w, http.StatusBadRequest, Response{
+				Message: "无效的用户IP地址",
+			})
 			return
 		}
 	}
 
 	nasip := net.ParseIP(nasip_str)
 	if nasip == nil {
-		handleResponse(w, Response{
-			Code: http.StatusBadRequest,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登录失败",
-				Message: "NAS IP配置错误",
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: "NAS IP配置错误",
+		})
 		return
 	}
 
@@ -212,16 +130,9 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	var full_username []byte
 	if len(username) == 0 {
-		handleResponse(w, Response{
-			Code: http.StatusBadRequest,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登录失败",
-				Message: "用户名不能为空",
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: "用户名不能为空",
+		})
 		return
 	}
 
@@ -235,34 +146,25 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Name:    username,
 		Pwd:     userpwd,
 		Mac:     []byte{},
-		Timeout: 3600,
+		Timeout: 604800,
 	}
 
 	if err := Auth(userip, nasip, full_username, userpwd); err != nil {
 		log.Printf("Authentication failed: username %s in nas %s, err %v", full_username, nasip, err)
-		handleResponse(w, Response{
-			Code: http.StatusUnauthorized,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登录失败",
-				Message: "用户名或密码错误",
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusUnauthorized, Response{
+			Message: "用户名或密码错误",
+		})
 		return
 	}
 
-	handleResponse(w, Response{
-		Code: http.StatusOK,
-		Data: struct {
-			Title   string
-			Message string
-		}{
-			Title:   "登录成功",
-			Message: "您可以点击窗口右上角完成，或点击窗口关闭",
+	handleResponse(w, http.StatusOK, Response{
+		Message: "登录成功",
+		Data: map[string]interface{}{
+			"username": string(username),
+			"userip":   userip.String(),
+			"timeout":  "7天",
 		},
-	}, "result.html")
+	})
 }
 
 func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
@@ -271,78 +173,48 @@ func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 	userip := net.ParseIP(userip_str)
 	if userip == nil {
-		handleResponse(w, Response{
-			Code: http.StatusBadRequest,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登出失败",
-				Message: fmt.Sprintf("无效的用户IP地址: %s", userip_str),
-			},
-		}, "result.html")
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: fmt.Sprintf("无效的用户IP地址: %s", userip_str),
+		})
 		return
 	}
 
-	basip := net.ParseIP(nas)
-	if basip == nil {
-		handleResponse(w, Response{
-			Code: http.StatusBadRequest,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登出失败",
-				Message: fmt.Sprintf("无效的NAS IP地址: %s", nas),
-			},
-		}, "result.html")
+	nasip := net.ParseIP(nas)
+	if nasip == nil {
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: fmt.Sprintf("无效的NAS IP地址: %s", nas),
+		})
 		return
 	}
 
-	if _, err := Logout(userip, *config.HuaweiSecret, basip); err != nil {
-		log.Printf("Logout failed: userip %s in nas %s, err %v", userip, basip, err)
-		handleResponse(w, Response{
-			Code: http.StatusInternalServerError,
-			Data: struct {
-				Title   string
-				Message string
-			}{
-				Title:   "登出失败",
-				Message: "登出请求失败，请稍后再试",
-			},
-		}, "result.html")
+	log.Printf("got a logout request from %s on nas %s\n", userip, nasip)
+
+	if _, err := Logout(userip, nasip); err != nil {
+		log.Printf("Logout failed: userip %s on nas %s, err %v", userip, nasip, err)
+		handleResponse(w, http.StatusConflict, Response{
+			Message: "登出请求失败，请稍后再试",
+		})
 		return
 	}
 
-	handleResponse(w, Response{
-		Code: http.StatusOK,
-		Data: struct {
-			Title   string
-			Message string
-		}{
-			Title:   "登出成功",
-			Message: "您已成功退出网络",
-		},
-	}, "result.html")
+	handleResponse(w, http.StatusOK, Response{
+		Message: "登出成功",
+	})
 }
 
 func (a *AuthServer) HandleRoot(w http.ResponseWriter, r *http.Request) {
-	handleResponse(w, Response{
-		Code: http.StatusOK,
+	handleResponse(w, http.StatusOK, Response{
+		Message: "抱歉，您无权访问此页面。请通过正确的认证流程访问网络。",
 		Data: struct {
-			Title      string
-			Message    string
 			RemoteAddr string
 			Path       string
 			Timestamp  string
 		}{
-			Title:      "访问受限",
-			Message:    "抱歉，您无权访问此页面。请通过正确的认证流程访问网络。",
 			RemoteAddr: r.RemoteAddr,
 			Path:       r.URL.Path,
 			Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
 		},
-	}, "default.html")
+	})
 }
 
 func (a *AuthServer) AcctStart(username []byte, userip net.IP, nasip net.IP, usermac net.HardwareAddr, sessionid string) error {

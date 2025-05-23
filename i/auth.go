@@ -2,10 +2,12 @@ package i
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 type ChapAuthService interface {
@@ -18,11 +20,6 @@ type PapAuthService interface {
 
 type MacAuthService interface {
 	AuthMac(mac net.HardwareAddr, userip net.IP) (error, uint32)
-}
-
-// 通过http方式请求Portal
-type HttpPortalHandler interface {
-	HandlePortal(w http.ResponseWriter, r *http.Request)
 }
 
 // 通过http方式请求Login
@@ -72,10 +69,25 @@ func TestChapPwd(chapid byte, testedpwd, chapcha, chappwd []byte) bool {
 // UTILS for wrap the http error
 func ErrorWrap(w http.ResponseWriter) {
 	if e := recover(); e != nil {
-		log.Print("panic:", e, "\n", string(debug.Stack()))
-		w.WriteHeader(http.StatusInternalServerError)
-		if err, ok := e.(error); ok {
-			w.Write([]byte(err.Error()))
+		stack := debug.Stack()
+		log.Printf("panic recovered: %v\nstack trace:\n%s", e, stack)
+
+		if w.Header().Get("Content-Type") != "" {
+			return
 		}
+
+		errMsg := "服务器内部错误"
+		if err, ok := e.(error); ok {
+			errMsg = err.Error()
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": errMsg,
+			"data": map[string]interface{}{
+				"timestamp": time.Now().Format("2006-01-02 15:04:05"),
+			},
+		})
 	}
 }

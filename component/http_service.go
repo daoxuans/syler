@@ -12,16 +12,6 @@ import (
 
 func StartHttp() {
 
-	http.HandleFunc("/portal", func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			i.ErrorWrap(w)
-		}()
-		if handler, ok := i.ExtraAuth.(i.HttpPortalHandler); ok {
-			handler.HandlePortal(w, r)
-		} else {
-			BASIC_SERVICE.HandlePortal(w, r)
-		}
-	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			i.ErrorWrap(w)

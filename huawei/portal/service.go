@@ -14,7 +14,7 @@ var cb_fallback func(Message, net.IP)
 var Ver Version
 var expect = make(map[uint16]chan Message)
 var errTimeout = fmt.Errorf("请求超时")
-var Timeout = 20 // Potal响应报文等待最大时长
+var Timeout = 8 // Potal响应报文等待最大时长
 
 const (
 	_              = iota

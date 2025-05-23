@@ -44,10 +44,17 @@ func Auth(userip net.IP, basip net.IP, username, userpwd []byte) (err error) {
 	return
 }
 
-func Logout(userip net.IP, secret string, basip net.IP) (response portal.Message, err error) {
+func Logout(userip net.IP, basip net.IP) (response portal.Message, err error) {
 	return portal.Logout(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort)
 }
 
-func NotifyLogout(msg portal.Message, src net.IP) {
-	portal.AckNtfLogout(msg.UserIp(), *config.HuaweiSecret, src, *config.HuaweiNasPort, msg.SerialId(), msg.ReqId())
+func NotifyLogout(msg portal.Message, basip net.IP) {
+	userip := msg.UserIp()
+	if userip == nil {
+		log.Printf("got a logout notification from nas %s, but userip is nil\n", basip)
+		return
+	}
+
+	log.Printf("got a logout notification of %s from nas %s\n", userip, basip)
+	portal.AckNtfLogout(userip, *config.HuaweiSecret, basip, *config.HuaweiNasPort, msg.SerialId(), msg.ReqId())
 }
