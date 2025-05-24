@@ -32,6 +32,16 @@ func StartHttp() {
 			BASIC_SERVICE.HandleLogout(w, r)
 		}
 	})
+	http.HandleFunc("/api/sendcode", func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			i.ErrorWrap(w)
+		}()
+		if handler, ok := i.ExtraAuth.(i.HttpSendCodeHandler); ok {
+			handler.HandleSendCode(w, r)
+		} else {
+			BASIC_SERVICE.HandleSendCode(w, r)
+		}
+	})
 	if extrahttp, ok := i.ExtraAuth.(i.ExtraHttpHandler); ok {
 		extrahttp.AddExtraHttp()
 	}

@@ -32,6 +32,11 @@ type HttpLogoutHandler interface {
 	HandleLogout(w http.ResponseWriter, r *http.Request)
 }
 
+// 通过http方式请求SendCode
+type HttpSendCodeHandler interface {
+	HandleSendCode(w http.ResponseWriter, r *http.Request)
+}
+
 type HttpRootHandler interface {
 	HandleRoot(w http.ResponseWriter, r *http.Request)
 }

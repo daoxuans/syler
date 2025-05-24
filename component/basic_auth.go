@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"daoxuans/syler/config"
 	"daoxuans/syler/i"
+	"daoxuans/syler/sms"
 )
 
 type AuthInfo struct {
@@ -23,6 +26,7 @@ type AuthInfo struct {
 
 type AuthServer struct {
 	authing_user map[string]*AuthInfo
+	smsProvider  sms.SMSProvider
 }
 
 type Response struct {
@@ -36,11 +40,37 @@ func handleResponse(w http.ResponseWriter, httpStatus int, resp Response) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func validatePhone(phone string) bool {
+	pattern := `^1[3-9]\d{9}$`
+	matched, _ := regexp.MatchString(pattern, phone)
+	return matched
+}
+
 var BASIC_SERVICE = new(AuthServer)
 
 func InitBasic() {
 	BASIC_SERVICE = &AuthServer{
 		authing_user: make(map[string]*AuthInfo),
+	}
+
+	if config.SMSProvider != nil && *config.SMSProvider != "" {
+		smsConfig := sms.SMSConfig{
+			Provider:     sms.Provider(*config.SMSProvider),
+			AccessKey:    *config.SMSAccessKey,
+			SecretKey:    *config.SMSSecretKey,
+			SignName:     *config.SMSSignName,
+			TemplateCode: *config.SMSTemplateCode,
+			Region:       *config.SMSRegion,
+			SDKAppID:     *config.SMSSDKAppID,
+		}
+
+		smsProvider, err := sms.NewSMSProvider(smsConfig)
+		if err != nil {
+			log.Fatalf("Warning: Failed to initialize SMS provider: %v", err)
+		} else {
+			BASIC_SERVICE.smsProvider = smsProvider
+			log.Printf("SMS provider %s initialized successfully", *config.SMSProvider)
+		}
 	}
 }
 
@@ -223,4 +253,62 @@ func (a *AuthServer) AcctStart(username []byte, userip net.IP, nasip net.IP, use
 
 func (a *AuthServer) AcctStop(username []byte, userip net.IP, nasip net.IP, usermac net.HardwareAddr, sessionid string) error {
 	return nil
+}
+
+func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
+	// 检查是否启用了短信服务
+	if a.smsProvider == nil {
+		handleResponse(w, http.StatusServiceUnavailable, Response{
+			Message: "短信服务未启用",
+		})
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		handleResponse(w, http.StatusMethodNotAllowed, Response{
+			Message: "仅支持POST请求",
+		})
+		return
+	}
+
+	var req struct {
+		Phone string `json:"phone"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: "无效的请求参数",
+		})
+		return
+	}
+
+	if validatePhone(req.Phone) {
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: "无效的手机号格式",
+		})
+		return
+	}
+
+	// 生成6位随机验证码
+	code := fmt.Sprintf("%06d", rand.Intn(1000000))
+
+	// 发送验证码
+	err := a.smsProvider.SendCode(req.Phone, code)
+	if err != nil {
+		log.Printf("Failed to send SMS to %s: %v", req.Phone, err)
+		handleResponse(w, http.StatusInternalServerError, Response{
+			Message: "发送验证码失败，请稍后重试",
+		})
+		return
+	}
+
+	// 保存验证码和发送时间
+	// 这里可以使用 Redis 或数据库来存储验证码和过期时间
+	// 例如：saveCodeToDB(req.Phone, code, time.Now().Add(5*time.Minute))
+
+	handleResponse(w, http.StatusOK, Response{
+		Message: "验证码已发送",
+		Data: map[string]interface{}{
+			"expire_seconds": 300, // 5分钟有效期
+		},
+	})
 }
