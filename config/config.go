@@ -23,6 +23,8 @@ var (
 	SMSTemplateCode     = toml.String("sms.template_code", "")
 	SMSRegion           = toml.String("sms.region", "ap-guangzhou")
 	SMSSDKAppID         = toml.String("sms.sdk_app_id", "")
+	RedisAddr           = toml.String("redis.addr", "localhost:6379")
+	RedisPassword       = toml.String("redis.password", "")
 	HuaweiPort          = toml.Int("huawei.port", 50100)
 	HuaweiVersion       = toml.Int("huawei.version", 1)
 	HuaweiSecret        = toml.String("huawei.secret", "testing123")

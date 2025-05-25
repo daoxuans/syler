@@ -2,6 +2,7 @@ package component
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,9 +13,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"daoxuans/syler/config"
 	"daoxuans/syler/i"
 	"daoxuans/syler/sms"
+)
+
+const (
+	UserSessionExpire = 168 * time.Hour // Session timeout for authentication
+	SMSCodePrefix     = "sms:code:"     // Redis key prefix for SMS codes
+	SMSCodeExpire     = 5 * time.Minute // Code expiration time
 )
 
 type AuthInfo struct {
@@ -27,6 +36,7 @@ type AuthInfo struct {
 type AuthServer struct {
 	authing_user map[string]*AuthInfo
 	smsProvider  sms.SMSProvider
+	redisClient  *redis.Client
 }
 
 type Response struct {
@@ -70,6 +80,27 @@ func InitBasic() {
 		} else {
 			BASIC_SERVICE.smsProvider = smsProvider
 			log.Printf("SMS provider %s initialized successfully", *config.SMSProvider)
+		}
+
+		rdb := redis.NewClient(&redis.Options{
+			Addr:         *config.RedisAddr,
+			Password:     *config.RedisPassword,
+			DB:           0,
+			DialTimeout:  5 * time.Second,
+			ReadTimeout:  3 * time.Second,
+			WriteTimeout: 3 * time.Second,
+			PoolSize:     10,
+			MaxRetries:   3,
+		})
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := rdb.Ping(ctx).Err(); err != nil {
+			log.Fatalf("Warning: Failed to connect to Redis: %v", err)
+		} else {
+			BASIC_SERVICE.redisClient = rdb
+			log.Printf("Redis connection initialized successfully at %s", *config.RedisAddr)
 		}
 	}
 }
@@ -176,7 +207,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Name:    username,
 		Pwd:     userpwd,
 		Mac:     []byte{},
-		Timeout: 604800,
+		Timeout: uint32(UserSessionExpire.Seconds()),
 	}
 
 	if err := Auth(userip, nasip, full_username, userpwd); err != nil {
@@ -256,7 +287,7 @@ func (a *AuthServer) AcctStop(username []byte, userip net.IP, nasip net.IP, user
 }
 
 func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
-	// 检查是否启用了短信服务
+
 	if a.smsProvider == nil {
 		handleResponse(w, http.StatusServiceUnavailable, Response{
 			Message: "短信服务未启用",
@@ -271,6 +302,13 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !strings.Contains(r.Header.Get("Referer"), "/portal") {
+		handleResponse(w, http.StatusForbidden, Response{
+			Message: "请从Portal页面获取验证码",
+		})
+		return
+	}
+
 	var req struct {
 		Phone string `json:"phone"`
 	}
@@ -281,34 +319,45 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if validatePhone(req.Phone) {
+	if !validatePhone(req.Phone) {
 		handleResponse(w, http.StatusBadRequest, Response{
 			Message: "无效的手机号格式",
 		})
 		return
 	}
 
-	// 生成6位随机验证码
 	code := fmt.Sprintf("%06d", rand.Intn(1000000))
 
-	// 发送验证码
-	err := a.smsProvider.SendCode(req.Phone, code)
-	if err != nil {
-		log.Printf("Failed to send SMS to %s: %v", req.Phone, err)
+	if err := a.smsProvider.SendCode(req.Phone, code); err != nil {
+		log.Printf("Failed to send SMS to %s: provider=%s, error=%v",
+			req.Phone,
+			*config.SMSProvider,
+			err,
+		)
 		handleResponse(w, http.StatusInternalServerError, Response{
 			Message: "发送验证码失败，请稍后重试",
 		})
 		return
 	}
 
-	// 保存验证码和发送时间
-	// 这里可以使用 Redis 或数据库来存储验证码和过期时间
-	// 例如：saveCodeToDB(req.Phone, code, time.Now().Add(5*time.Minute))
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	key := SMSCodePrefix + req.Phone
+	if err := a.redisClient.SetEx(ctx, key, code, SMSCodeExpire).Err(); err != nil {
+		log.Printf("Failed to save code to Redis: %v", err)
+		handleResponse(w, http.StatusInternalServerError, Response{
+			Message: "系统错误，请稍后重试",
+		})
+		return
+	}
+
+	log.Printf("Successfully sent SMS code to %s", req.Phone)
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "验证码已发送",
 		Data: map[string]interface{}{
-			"expire_seconds": 300, // 5分钟有效期
+			"expire_seconds": int(SMSCodeExpire.Seconds()),
 		},
 	})
 }
