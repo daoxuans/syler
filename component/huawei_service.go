@@ -24,6 +24,8 @@ func StartHuawei() {
 		portal.SetVersion(new(v2.Version))
 	}
 
+	log.Printf("listen portal on %d\n", *config.HuaweiPort)
+
 	portal.ListenAndService(fmt.Sprintf(":%d", *config.HuaweiPort))
 }
 
