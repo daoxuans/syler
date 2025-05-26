@@ -1,14 +1,28 @@
-[radius]
-enabled=false
 [http]
 port=8080
 remote_ip_as_user_ip=false
 nas_ip=""
+white_list=""
+
 [huawei]
 port=50100
 version=2
 secret="syler"
 nas_port=2000
 domain=""
+
+[sms]
+provider=""  # 可选值: aliyun/tencent
+access_key=""
+secret_key=""
+sign_name=""
+template_code=""
+region="ap-guangzhou"  # 腾讯云默认地区
+sdk_app_id=""  # 腾讯云需要
+
+[redis]
+addr="localhost:6379"
+password=""
+
 [basic]
 logfile="./syler.log"
