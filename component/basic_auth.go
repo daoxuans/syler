@@ -1,7 +1,6 @@
 package component
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,21 +15,20 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"daoxuans/syler/config"
-	"daoxuans/syler/i"
 	"daoxuans/syler/sms"
 )
 
 const (
-	UserSessionExpire = 168 * time.Hour // Session timeout for authentication
-	SMSCodePrefix     = "sms:code:"     // Redis key prefix for SMS codes
-	SMSCodeExpire     = 5 * time.Minute // Code expiration time
+	SMSCodePrefix = "sms:code:"     // Redis key prefix for SMS codes
+	SMSCodeExpire = 5 * time.Minute // Code expiration time
 )
 
 type AuthInfo struct {
-	Name    []byte
-	Pwd     []byte
-	Mac     net.HardwareAddr
-	Timeout uint32 //用户会话超时时间，单位秒
+	Name  []byte
+	Pwd   []byte
+	Mac   net.HardwareAddr
+	IP    net.IP
+	NasIP net.IP
 }
 
 type AuthServer struct {
@@ -105,36 +103,6 @@ func InitBasic() {
 	}
 }
 
-func (a *AuthServer) AuthChap(username []byte, chapid byte, chappwd, chapcha []byte, userip net.IP, usermac net.HardwareAddr) (err error, to uint32) {
-	if info, ok := a.authing_user[userip.String()]; ok {
-		if bytes.Equal(username, info.Name) && i.TestChapPwd(chapid, info.Pwd, chapcha, chappwd) {
-			to = info.Timeout
-			info.Mac = usermac
-			return
-		}
-	} else {
-		err = fmt.Errorf("radius auth - no such user %s", userip.String())
-	}
-	return
-}
-
-func (a *AuthServer) AuthMac(mac net.HardwareAddr, userip net.IP) (err error, to uint32) {
-	err = fmt.Errorf("unsupported mac auth on %s", userip.String())
-	to = 0
-	return
-}
-
-func (a *AuthServer) AuthPap(username, userpwd []byte, userip net.IP) (err error, to uint32) {
-	if info, ok := a.authing_user[userip.String()]; ok {
-		if bytes.Equal(info.Pwd, userpwd) {
-			to = info.Timeout
-		}
-	} else {
-		err = fmt.Errorf("radius auth - no such user %s", userip.String())
-	}
-	return
-}
-
 func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		handleResponse(w, http.StatusMethodNotAllowed, Response{
@@ -203,11 +171,12 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		full_username = username
 	}
 
-	a.authing_user[userip.String()] = &AuthInfo{
-		Name:    username,
-		Pwd:     userpwd,
-		Mac:     []byte{},
-		Timeout: uint32(UserSessionExpire.Seconds()),
+	a.authing_user[string(username)] = &AuthInfo{
+		Name:  username,
+		Pwd:   userpwd,
+		Mac:   []byte{},
+		IP:    userip,
+		NasIP: nasip,
 	}
 
 	if err := Auth(userip, nasip, full_username, userpwd); err != nil {
@@ -276,14 +245,6 @@ func (a *AuthServer) HandleRoot(w http.ResponseWriter, r *http.Request) {
 			Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
 		},
 	})
-}
-
-func (a *AuthServer) AcctStart(username []byte, userip net.IP, nasip net.IP, usermac net.HardwareAddr, sessionid string) error {
-	return nil
-}
-
-func (a *AuthServer) AcctStop(username []byte, userip net.IP, nasip net.IP, usermac net.HardwareAddr, sessionid string) error {
-	return nil
 }
 
 func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {

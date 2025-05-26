@@ -5,7 +5,6 @@ go 1.22.8
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.63.107
 	github.com/extrame/go-toml-config v0.0.0-20190318035753-a516bbef5346
-	github.com/extrame/radius v0.0.0-20141107091127-c277045e1da0
 	github.com/redis/go-redis/v9 v9.8.0
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.1172
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.0.1115

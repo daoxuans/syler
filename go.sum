@@ -18,8 +18,6 @@ github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/r
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/extrame/go-toml-config v0.0.0-20190318035753-a516bbef5346 h1:Uup8zCjsjXgtkniSI4KMfbL2vn/wMBdXEnPIckclIoA=
 github.com/extrame/go-toml-config v0.0.0-20190318035753-a516bbef5346/go.mod h1:kJIxk9gubMUqsZEtLjy2deEzxsPqYjupLp31Tu+GILo=
-github.com/extrame/radius v0.0.0-20141107091127-c277045e1da0 h1:sWg17fHuB94xxMPXrQcUoP7FbMDPPFXaPFXF164jrjM=
-github.com/extrame/radius v0.0.0-20141107091127-c277045e1da0/go.mod h1:iprqEdZua+eayXDVSrIObz4YBOSD1+5VfCykGr7S5KE=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d/go.mod h1:nnjvkQ9ptGaCkuDUx6wNykzzlUixGxvkme+H/lnzb+A=
