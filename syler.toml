@@ -7,7 +7,7 @@ white_list=""
 [huawei]
 port=50100
 version=2
-secret="syler"
+secret="IoT@radius.com"
 nas_port=2000
 domain=""
 
@@ -22,7 +22,8 @@ sdk_app_id=""  # 腾讯云需要
 
 [redis]
 addr="localhost:6379"
-password=""
+db=0
+password="A4vSK1B18IcRPNmvEASgL3E955emH2hzmWdJd"
 
 [basic]
-logfile="./syler.log"
+logfile="/var/log/syler/syler.log"

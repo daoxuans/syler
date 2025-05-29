@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	SMSCodePrefix = "sms:code:"     // Redis key prefix for SMS codes
-	SMSCodeExpire = 5 * time.Minute // Code expiration time
+	SMSCodePrefix     = "user:"         // Redis key prefix for SMS codes
+	SMSCodeExpire     = 5 * time.Minute // Code expiration time
+	MacSessionPfrefix = "mac:"          // Redis key prefix for MAC addresses
+	MacSessionExpire  = 7 * 24 * time.Hour
 )
 
 type AuthInfo struct {
@@ -130,6 +132,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		nasip_str = *config.NasIp
 	}
 	userip_str := r.FormValue("userip")
+	usermac_str := r.FormValue("usermac")
 	username := []byte(r.FormValue("username"))
 	userpwd := []byte(r.FormValue("userpwd"))
 
@@ -185,6 +188,23 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			Message: "用户名或密码错误",
 		})
 		return
+	}
+
+	if usermac_str != "" {
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+
+		formatmac := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(usermac_str, ":", ""), "-", ""))
+		key := MacSessionPfrefix + formatmac
+		if err := a.redisClient.SetEx(ctx, key, 1, MacSessionExpire).Err(); err != nil {
+			log.Printf("Failed to save mac to Redis: %v", err)
+			handleResponse(w, http.StatusInternalServerError, Response{
+				Message: "系统错误，请稍后重试",
+			})
+			return
+		}
+	} else {
+		log.Printf("No MAC address provided for user %s on nas %s", username, nasip)
 	}
 
 	handleResponse(w, http.StatusOK, Response{
