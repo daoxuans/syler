@@ -63,6 +63,27 @@ func InitBasic() {
 		authing_user: make(map[string]*AuthInfo),
 	}
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:         *config.RedisAddr,
+		Password:     *config.RedisPassword,
+		DB:           0,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolSize:     10,
+		MaxRetries:   3,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Fatalf("Warning: Failed to connect to Redis: %v", err)
+	} else {
+		BASIC_SERVICE.redisClient = rdb
+		log.Printf("Redis connection initialized successfully at %s", *config.RedisAddr)
+	}
+
 	if config.SMSProvider != nil && *config.SMSProvider != "" {
 		smsConfig := sms.SMSConfig{
 			Provider:     sms.Provider(*config.SMSProvider),
@@ -80,27 +101,6 @@ func InitBasic() {
 		} else {
 			BASIC_SERVICE.smsProvider = smsProvider
 			log.Printf("SMS provider %s initialized successfully", *config.SMSProvider)
-		}
-
-		rdb := redis.NewClient(&redis.Options{
-			Addr:         *config.RedisAddr,
-			Password:     *config.RedisPassword,
-			DB:           0,
-			DialTimeout:  5 * time.Second,
-			ReadTimeout:  3 * time.Second,
-			WriteTimeout: 3 * time.Second,
-			PoolSize:     10,
-			MaxRetries:   3,
-		})
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := rdb.Ping(ctx).Err(); err != nil {
-			log.Fatalf("Warning: Failed to connect to Redis: %v", err)
-		} else {
-			BASIC_SERVICE.redisClient = rdb
-			log.Printf("Redis connection initialized successfully at %s", *config.RedisAddr)
 		}
 	}
 }
@@ -207,6 +207,8 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		log.Printf("No MAC address provided for user %s on nas %s", username, nasip)
 	}
 
+	log.Printf("User %s logged in successfully from %s", username, nasip)
+
 	handleResponse(w, http.StatusOK, Response{
 		Message: "登录成功",
 		Data: map[string]interface{}{
@@ -246,6 +248,8 @@ func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	log.Printf("User %s logged out successfully from NAS %s", userip, nasip)
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "登出成功",

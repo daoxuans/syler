@@ -42,7 +42,6 @@ func main() {
 }
 
 func initialize(configPath string) error {
-	component.InitBasic()
 
 	configPath = filepath.FromSlash(configPath)
 	if err := toml.Parse(configPath); err != nil {
@@ -54,6 +53,9 @@ func initialize(configPath string) error {
 	}
 
 	component.InitLogger()
+
+	component.InitBasic()
+
 	return nil
 }
 
@@ -62,10 +64,10 @@ func startServices(ctx context.Context, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		go component.StartHuawei()
-		log.Println("Portal协议服务已启动")
+		log.Println("Portal 协议服务已启动")
 
 		<-ctx.Done()
-		log.Println("正在关闭Portal协议服务...")
+		log.Println("正在关闭Portal 协议服务...")
 		// 这里可以添加华为服务的清理代码
 		time.Sleep(time.Second) // 给清理留出时间
 	}()
