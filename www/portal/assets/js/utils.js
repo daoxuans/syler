@@ -3,13 +3,13 @@ const Utils = {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(param);
     },
-    
+
     showMessage(message, type = 'error') {
         const msgEl = document.getElementById('message');
         msgEl.textContent = message;
         msgEl.className = `message ${type}`;
         msgEl.classList.remove('hidden');
-        
+
         setTimeout(() => {
             msgEl.classList.add('hidden');
         }, 3000);
@@ -19,11 +19,11 @@ const Utils = {
     toggleAuthSection(isLoggedIn, userData) {
         const loginSection = document.getElementById('loginSection');
         const logoutSection = document.getElementById('logoutSection');
-        
+
         if (isLoggedIn && userData) {
             loginSection.classList.add('hidden');
             logoutSection.classList.remove('hidden');
-            
+
             // 更新用户信息显示
             document.getElementById('displayUsername').textContent = userData.username || '';
             document.getElementById('displayUserIP').textContent = userData.userip || '';
@@ -63,18 +63,18 @@ const Utils = {
         localStorage.removeItem('userip');
         localStorage.removeItem('timeout');
     },
-    
+
     startLogoutTimer(timeout) {
         const ms = parseInt(timeout) * 1000;
         return setTimeout(() => {
             this.handleAutoLogout();
         }, ms);
     },
-    
+
     async handleAutoLogout() {
         const nasip = localStorage.getItem('nasip');
         const userip = localStorage.getItem('userip');
-        
+
         try {
             await API.logout({ nasip, userip });
             this.showMessage('会话已过期，请重新登录', 'info');

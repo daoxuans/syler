@@ -1,6 +1,6 @@
 const API = {
     baseURL: '/api',
-    
+
     async login(data) {
         try {
             console.log('Sending login request:', data);
@@ -13,7 +13,7 @@ const API = {
                 },
                 body: new URLSearchParams(data)
             });
-            
+
             const result = await response.json();
             if (!response.ok) {
                 throw new Error(result.message || '登录失败');
@@ -23,7 +23,7 @@ const API = {
             throw error;
         }
     },
-    
+
     async logout(data) {
         try {
             const response = await fetch(this.baseURL + '/logout', {
@@ -35,7 +35,7 @@ const API = {
                 },
                 body: new URLSearchParams(data)
             });
-            
+
             const result = await response.json();
             if (!response.ok) {
                 throw new Error(result.message || '登出失败');

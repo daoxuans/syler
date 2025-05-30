@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>WiFi 认证</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
+
 <body>
     <div class="container">
         <div class="auth-box">
@@ -15,17 +17,18 @@
                 <form id="loginForm" onsubmit="return false;">
                     <input type="hidden" id="nasip" name="nasip">
                     <input type="hidden" id="userip" name="userip">
-                    
+                    <input type="hidden" id="usermac" name="usermac">
+
                     <div class="form-group">
                         <label for="username">用户名</label>
                         <input type="text" id="username" name="username" required autocomplete="username">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="userpwd">密码</label>
                         <input type="password" id="userpwd" name="userpwd" required>
                     </div>
-                    
+
                     <button type="submit" id="loginButton">登录</button>
                 </form>
             </div>
@@ -45,9 +48,10 @@
             <div id="message" class="message hidden"></div>
         </div>
     </div>
-    
+
     <script src="/assets/js/utils.js"></script>
     <script src="/assets/js/api.js"></script>
     <script src="/assets/js/main.js"></script>
 </body>
+
 </html>
