@@ -81,6 +81,20 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.input-group input {
+    flex: 1;
+}
+
+.input-group button {
+    width: 100px;
+    white-space: nowrap;
+}
+
 #logoutButton {
     background: #e53e3e;
 }

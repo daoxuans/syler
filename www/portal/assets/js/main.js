@@ -51,6 +51,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 获取验证码按钮处理
+    const getCodeButton = document.getElementById('getCodeButton');
+    let countdown = 0;
+
+    getCodeButton.addEventListener('click', async () => {
+        if (countdown > 0) {
+            Utils.showMessage(`请等待 ${countdown} 秒后重试`, 'info');
+            return;
+        }
+
+        const usernameInput = document.getElementById('username');
+        const phone = usernameInput.value.trim();
+
+        if (!phone) {
+            Utils.showMessage('请输入用户名作为手机号', 'error');
+            return;
+        }
+
+        // 启动倒计时
+        countdown = 60;
+        const interval = setInterval(() => {
+            if (countdown <= 0) {
+                clearInterval(interval);
+                getCodeButton.textContent = "获取密码";
+            } else {
+                getCodeButton.textContent = `${countdown--} 秒`;
+            }
+        }, 1000);
+
+        try {
+            const response = await fetch('/api/sendcode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Referer': window.location.origin + '/portal'
+                },
+                body: JSON.stringify({ phone })
+            });
+
+            if (response.ok) {
+                Utils.showMessage('验证码发送成功，请注意查收，5分钟有效', 'success');
+            } else {
+                const result = await response.json();
+                Utils.showMessage(result.message || '获取失败，请稍后再试', 'error');
+            }
+        } catch (error) {
+            Utils.showMessage('网络错误，请检查连接', 'error');
+        }
+    });
+
     // 登出按钮处理
     const logoutButton = document.getElementById('logoutButton');
 
