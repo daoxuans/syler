@@ -27,6 +27,9 @@ var (
 	HuaweiNasPort       = toml.Int("huawei.nas_port", 2000)
 	HuaweiDomain        = toml.String("huawei.domain", "huawei.com")
 	LogFile             = toml.String("basic.logfile", "")
+	LogLevel            = toml.String("basic.loglevel", "info")
+	LogMaxSize          = toml.Int("basic.log_max_size", 100)   // MB
+	LogMaxBackups       = toml.Int("basic.log_max_backups", 10) // 保留的最大备份文件数
 )
 
 func IsValid() bool {

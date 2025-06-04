@@ -2,15 +2,17 @@ package component
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"daoxuans/syler/config"
 	"daoxuans/syler/i"
+	"daoxuans/syler/logger"
 )
 
 func StartHttp() {
+
+	log := logger.GetLogger()
 
 	http.HandleFunc("/api/login", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {

@@ -2,16 +2,18 @@ package component
 
 import (
 	"fmt"
-	"log"
 	"net"
 
 	"daoxuans/syler/config"
 	"daoxuans/syler/huawei/portal"
 	v1 "daoxuans/syler/huawei/portal/v1"
 	v2 "daoxuans/syler/huawei/portal/v2"
+	"daoxuans/syler/logger"
 )
 
 func StartHuawei() {
+	log := logger.GetLogger()
+
 	portal.RegisterFallBack(func(msg portal.Message, src net.IP) {
 		log.Println(" type: ", msg.Type())
 		if msg.Type() == portal.NTF_LOGOUT {
@@ -51,6 +53,8 @@ func Logout(userip net.IP, basip net.IP) (response portal.Message, err error) {
 }
 
 func NotifyLogout(msg portal.Message, basip net.IP) {
+	log := logger.GetLogger()
+
 	userip := msg.UserIp()
 	if userip == nil {
 		log.Printf("got a logout notification from nas %s, but userip is nil\n", basip)

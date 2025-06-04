@@ -8,26 +8,41 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
 	"daoxuans/syler/component"
 	"daoxuans/syler/config"
+	"daoxuans/syler/logger"
 
 	toml "github.com/extrame/go-toml-config"
 )
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	configPath := flag.String("config", "./syler.toml", "设置配置文件的路径")
 	flag.Parse()
-
-	if err := initialize(*configPath); err != nil {
-		log.Fatalf("初始化失败: %v", err)
+	path := filepath.FromSlash(*configPath)
+	if err := toml.Parse(path); err != nil {
+		fmt.Printf("解析配置文件失败: %v", err)
+		os.Exit(1)
 	}
+
+	err := logger.Init(
+		*config.LogFile,
+		*config.LogLevel,
+		*config.LogMaxSize,
+		*config.LogMaxBackups,
+	)
+	if err != nil {
+		fmt.Printf("初始化日志失败: %v", err)
+		os.Exit(1)
+	}
+
+	log := logger.GetLogger()
+
+	component.InitBasic()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -39,24 +54,6 @@ func main() {
 
 	wg.Wait()
 	log.Println("已安全关闭")
-}
-
-func initialize(configPath string) error {
-
-	configPath = filepath.FromSlash(configPath)
-	if err := toml.Parse(configPath); err != nil {
-		return fmt.Errorf("解析配置文件失败: %v", err)
-	}
-
-	if !config.IsValid() {
-		return fmt.Errorf("配置验证失败")
-	}
-
-	component.InitLogger()
-
-	component.InitBasic()
-
-	return nil
 }
 
 func startServices(ctx context.Context, wg *sync.WaitGroup) {

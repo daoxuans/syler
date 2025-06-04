@@ -2,9 +2,7 @@ package i
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
-	"runtime/debug"
 	"time"
 )
 
@@ -37,8 +35,6 @@ var ExtraAuth interface{}
 // UTILS for wrap the http error
 func ErrorWrap(w http.ResponseWriter) {
 	if e := recover(); e != nil {
-		stack := debug.Stack()
-		log.Printf("panic recovered: %v\nstack trace:\n%s", e, stack)
 
 		if w.Header().Get("Content-Type") != "" {
 			return

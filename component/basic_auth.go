@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -13,8 +12,10 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 
 	"daoxuans/syler/config"
+	"daoxuans/syler/logger"
 	"daoxuans/syler/sms"
 )
 
@@ -37,6 +38,7 @@ type AuthServer struct {
 	authing_user map[string]*AuthInfo
 	smsProvider  sms.SMSProvider
 	redisClient  *redis.Client
+	log          *logrus.Logger
 }
 
 type Response struct {
@@ -59,8 +61,11 @@ func validatePhone(phone string) bool {
 var BASIC_SERVICE = new(AuthServer)
 
 func InitBasic() {
+	log := logger.GetLogger()
+
 	BASIC_SERVICE = &AuthServer{
 		authing_user: make(map[string]*AuthInfo),
+		log:          log,
 	}
 
 	rdb := redis.NewClient(&redis.Options{
@@ -158,7 +163,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("got a login request from %s on nas %s\n", userip, nasip)
+	a.log.Printf("got a login request from %s on nas %s\n", userip, nasip)
 
 	var full_username []byte
 	if len(username) == 0 {
@@ -183,7 +188,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := Auth(userip, nasip, full_username, userpwd); err != nil {
-		log.Printf("Authentication failed: username %s in nas %s, err %v", full_username, nasip, err)
+		a.log.Printf("Authentication failed: username %s in nas %s, err %v", full_username, nasip, err)
 		handleResponse(w, http.StatusUnauthorized, Response{
 			Message: "用户名或密码错误",
 		})
@@ -197,17 +202,17 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		formatmac := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(usermac_str, ":", ""), "-", ""))
 		key := MacSessionPfrefix + formatmac
 		if err := a.redisClient.SetEx(ctx, key, 1, MacSessionExpire).Err(); err != nil {
-			log.Printf("Failed to save mac to Redis: %v", err)
+			a.log.Printf("Failed to save mac to Redis: %v", err)
 			handleResponse(w, http.StatusInternalServerError, Response{
 				Message: "系统错误，请稍后重试",
 			})
 			return
 		}
 	} else {
-		log.Printf("No MAC address provided for user %s on nas %s", username, nasip)
+		a.log.Printf("No MAC address provided for user %s on nas %s", username, nasip)
 	}
 
-	log.Printf("User %s logged in successfully from %s", username, nasip)
+	a.log.Printf("User %s logged in successfully from %s", username, nasip)
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "登录成功",
@@ -239,17 +244,17 @@ func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("got a logout request from %s on nas %s\n", userip, nasip)
+	a.log.Printf("got a logout request from %s on nas %s\n", userip, nasip)
 
 	if _, err := Logout(userip, nasip); err != nil {
-		log.Printf("Logout failed: userip %s on nas %s, err %v", userip, nasip, err)
+		a.log.Printf("Logout failed: userip %s on nas %s, err %v", userip, nasip, err)
 		handleResponse(w, http.StatusConflict, Response{
 			Message: "登出请求失败，请稍后再试",
 		})
 		return
 	}
 
-	log.Printf("User %s logged out successfully from NAS %s", userip, nasip)
+	a.log.Printf("User %s logged out successfully from NAS %s", userip, nasip)
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "登出成功",
@@ -314,7 +319,7 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 	code := fmt.Sprintf("%06d", rand.Intn(1000000))
 
 	if err := a.smsProvider.SendCode(req.Phone, code); err != nil {
-		log.Printf("Failed to send SMS to %s: provider=%s, error=%v",
+		a.log.Printf("Failed to send SMS to %s: provider=%s, error=%v",
 			req.Phone,
 			*config.SMSProvider,
 			err,
@@ -330,14 +335,14 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 
 	key := SMSCodePrefix + req.Phone
 	if err := a.redisClient.SetEx(ctx, key, code, SMSCodeExpire).Err(); err != nil {
-		log.Printf("Failed to save code to Redis: %v", err)
+		a.log.Printf("Failed to save code to Redis: %v", err)
 		handleResponse(w, http.StatusInternalServerError, Response{
 			Message: "系统错误，请稍后重试",
 		})
 		return
 	}
 
-	log.Printf("Successfully sent SMS code to %s", req.Phone)
+	a.log.Printf("Successfully sent SMS code to %s", req.Phone)
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "验证码已发送",

@@ -1,8 +1,8 @@
 package portal
 
 import (
+	"daoxuans/syler/logger"
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"net"
@@ -72,6 +72,8 @@ func SetVersion(v Version) {
 }
 
 func ListenAndService(addr string) (err error) {
+	log := logger.GetLogger()
+
 	var ad *net.UDPAddr
 	ad, err = net.ResolveUDPAddr("udp", addr)
 	if err != nil {
