@@ -1,0 +1,35 @@
+http:
+  # Server host
+  host: "localhost"
+  port: 8080
+
+huawei:
+  host: ""
+  port: 50100
+  version: 2
+  secret: "IoT@radius.com"
+  nas_port: 2000
+
+sms:
+  provider: "tencent"
+  access_key: ""
+  secret_key: ""
+  sign_name: ""
+  template_code: ""
+  region: "ap-guangzhou"
+  sdk_app_id: ""
+
+redis:
+  addr: "localhost:6379"
+  db: 0
+  password: "A4vSK1B18IcRPNmvEASgL3E955emH2hzmWdJd"
+
+logging:
+  # Log file path
+  file: "/var/log/syler/syler.log"
+  # Log level (debug, info, warn, error)
+  level: "info"
+  # Max size in MB before rotation
+  max_size: 1024
+  # Number of backups to keep
+  max_backups: 5

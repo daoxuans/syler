@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"daoxuans/syler/config"
 	"daoxuans/syler/i"
 	"daoxuans/syler/logger"
+
+	"github.com/spf13/viper"
 )
 
 func StartHttp() {
@@ -59,16 +60,16 @@ func StartHttp() {
 	})
 
 	server := &http.Server{
-		Addr:              fmt.Sprintf("localhost:%d", *config.HttpPort),
+		Addr:              fmt.Sprintf("localhost:%d", viper.GetInt("http.port")),
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
-	log.Printf("listen http on %d\n", *config.HttpPort)
+	log.Printf("listen http server on %d", viper.GetInt("http.port"))
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("Failed to start HTTP server on port %d: %v", *config.HttpPort, err)
+		log.Fatalf("Failed to start HTTP server on port %d: %v", viper.GetInt("http.port"), err)
 	}
 }

@@ -13,8 +13,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 
-	"daoxuans/syler/config"
 	"daoxuans/syler/logger"
 	"daoxuans/syler/sms"
 )
@@ -69,9 +69,9 @@ func InitBasic() {
 	}
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         *config.RedisAddr,
-		Password:     *config.RedisPassword,
-		DB:           0,
+		Addr:         viper.GetString("redis.addr"),
+		Password:     viper.GetString("redis.password"),
+		DB:           viper.GetInt("redis.db"),
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
@@ -86,18 +86,18 @@ func InitBasic() {
 		log.Fatalf("Warning: Failed to connect to Redis: %v", err)
 	} else {
 		BASIC_SERVICE.redisClient = rdb
-		log.Printf("Redis connection initialized successfully at %s", *config.RedisAddr)
+		log.Printf("Redis connection initialized successfully at %s", viper.GetString("redis.addr"))
 	}
 
-	if config.SMSProvider != nil && *config.SMSProvider != "" {
+	if viper.GetString("sms.provider") != "" {
 		smsConfig := sms.SMSConfig{
-			Provider:     sms.Provider(*config.SMSProvider),
-			AccessKey:    *config.SMSAccessKey,
-			SecretKey:    *config.SMSSecretKey,
-			SignName:     *config.SMSSignName,
-			TemplateCode: *config.SMSTemplateCode,
-			Region:       *config.SMSRegion,
-			SDKAppID:     *config.SMSSDKAppID,
+			Provider:     sms.Provider(viper.GetString("sms.provider")),
+			AccessKey:    viper.GetString("sms.access_key"),
+			SecretKey:    viper.GetString("sms.secret_key"),
+			SignName:     viper.GetString("sms.sign_name"),
+			TemplateCode: viper.GetString("sms.template_code"),
+			Region:       viper.GetString("sms.region"),
+			SDKAppID:     viper.GetString("sms.sdk_app_id"),
 		}
 
 		smsProvider, err := sms.NewSMSProvider(smsConfig)
@@ -105,7 +105,7 @@ func InitBasic() {
 			log.Fatalf("Warning: Failed to initialize SMS provider: %v", err)
 		} else {
 			BASIC_SERVICE.smsProvider = smsProvider
-			log.Printf("SMS provider %s initialized successfully", *config.SMSProvider)
+			log.Printf("SMS provider %s initialized successfully", viper.GetString("sms.provider"))
 		}
 	}
 }
@@ -125,36 +125,16 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !config.IsValidClient(r.RemoteAddr) {
-		handleResponse(w, http.StatusForbidden, Response{
-			Message: "该IP不在配置可允许的用户中",
+	userip_str := r.FormValue("userip")
+	userip := net.ParseIP(userip_str)
+	if userip == nil {
+		handleResponse(w, http.StatusBadRequest, Response{
+			Message: "无效的用户IP地址",
 		})
 		return
 	}
 
 	nasip_str := r.FormValue("nasip")
-	if *config.NasIp != "" {
-		nasip_str = *config.NasIp
-	}
-	userip_str := r.FormValue("userip")
-	usermac_str := r.FormValue("usermac")
-	username := []byte(r.FormValue("username"))
-	userpwd := []byte(r.FormValue("userpwd"))
-
-	var userip net.IP
-	if *config.UseRemoteIpAsUserIp {
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-		userip = net.ParseIP(ip)
-	} else {
-		userip = net.ParseIP(userip_str)
-		if userip == nil {
-			handleResponse(w, http.StatusBadRequest, Response{
-				Message: "无效的用户IP地址",
-			})
-			return
-		}
-	}
-
 	nasip := net.ParseIP(nasip_str)
 	if nasip == nil {
 		handleResponse(w, http.StatusBadRequest, Response{
@@ -163,20 +143,17 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.log.Printf("got a login request from %s on nas %s\n", userip, nasip)
+	usermac_str := r.FormValue("usermac")
+	username := []byte(r.FormValue("username"))
+	userpwd := []byte(r.FormValue("userpwd"))
 
-	var full_username []byte
+	a.log.Printf("got a login request from %s on nas %s", userip, nasip)
+
 	if len(username) == 0 {
 		handleResponse(w, http.StatusBadRequest, Response{
 			Message: "用户名不能为空",
 		})
 		return
-	}
-
-	if *config.HuaweiDomain != "" {
-		full_username = []byte(string(username) + "@" + *config.HuaweiDomain)
-	} else {
-		full_username = username
 	}
 
 	a.authing_user[string(username)] = &AuthInfo{
@@ -187,8 +164,8 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		NasIP: nasip,
 	}
 
-	if err := Auth(userip, nasip, full_username, userpwd); err != nil {
-		a.log.Printf("Authentication failed: username %s in nas %s, err %v", full_username, nasip, err)
+	if err := Auth(userip, nasip, username, userpwd); err != nil {
+		a.log.Printf("Authentication failed: username %s in nas %s, err %v", username, nasip, err)
 		handleResponse(w, http.StatusUnauthorized, Response{
 			Message: "用户名或密码错误",
 		})
@@ -244,7 +221,7 @@ func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.log.Printf("got a logout request from %s on nas %s\n", userip, nasip)
+	a.log.Printf("got a logout request from %s on nas %s", userip, nasip)
 
 	if _, err := Logout(userip, nasip); err != nil {
 		a.log.Printf("Logout failed: userip %s on nas %s, err %v", userip, nasip, err)
@@ -321,7 +298,7 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 	if err := a.smsProvider.SendCode(req.Phone, code); err != nil {
 		a.log.Printf("Failed to send SMS to %s: provider=%s, error=%v",
 			req.Phone,
-			*config.SMSProvider,
+			viper.GetString("sms.provider"),
 			err,
 		)
 		handleResponse(w, http.StatusInternalServerError, Response{
