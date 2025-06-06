@@ -61,7 +61,7 @@ func StartHttp() {
 	})
 
 	server := &http.Server{
-		Addr:              fmt.Sprintf("localhost:%d", viper.GetInt("http.port")),
+		Addr:              fmt.Sprintf("%s:%d", viper.GetString("http.host"), viper.GetInt("http.port")),
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
@@ -69,13 +69,13 @@ func StartHttp() {
 	}
 
 	log.WithFields(logrus.Fields{
+		"host": viper.GetString("http.host"),
 		"port": viper.GetInt("http.port"),
 	}).Info("Starting HTTP server")
 
 	if err := server.ListenAndServe(); err != nil {
 		log.WithFields(logrus.Fields{
 			"error": err,
-			"port":  viper.GetInt("http.port"),
 		}).Fatal("Failed to start HTTP server")
 	}
 }

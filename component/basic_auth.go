@@ -332,8 +332,7 @@ func (a *Authenticator) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.smsProvider.SendCode(req.Phone, code); err != nil {
 		log.WithFields(logrus.Fields{
-			"error":    err,
-			"provider": viper.GetString("sms.provider"),
+			"error": err,
 		}).Error("Failed to send SMS")
 		handleResponse(w, http.StatusInternalServerError, Response{
 			Message: "发送验证码失败，请稍后重试",
