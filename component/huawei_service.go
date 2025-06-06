@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/sirupsen/logrus"
+
 	"daoxuans/syler/huawei/portal"
 	v1 "daoxuans/syler/huawei/portal/v1"
 	v2 "daoxuans/syler/huawei/portal/v2"
@@ -16,8 +18,11 @@ func StartHuawei() {
 	log := logger.GetLogger()
 
 	portal.RegisterFallBack(func(msg portal.Message, src net.IP) {
-		log.Println(" type: ", msg.Type())
 		if msg.Type() == portal.NTF_LOGOUT {
+			log.WithFields(logrus.Fields{
+				"message_type": "NTF_LOGOUT",
+				"source_ip":    src.String(),
+			}).Debug("Received portal logout notification")
 			NotifyLogout(msg, src)
 		}
 	})
@@ -27,7 +32,9 @@ func StartHuawei() {
 		portal.SetVersion(new(v2.Version))
 	}
 
-	log.Printf("listen portal server on %d", viper.GetInt("huawei.port"))
+	log.WithFields(logrus.Fields{
+		"port": viper.GetInt("huawei.port"),
+	}).Info("Starting portal server")
 
 	portal.ListenAndService(fmt.Sprintf(":%d", viper.GetInt("huawei.port")))
 }
@@ -58,10 +65,15 @@ func NotifyLogout(msg portal.Message, basip net.IP) {
 
 	userip := msg.UserIp()
 	if userip == nil {
-		log.Printf("got a logout notification from nas %s, but userip is nil", basip)
+		log.WithFields(logrus.Fields{
+			"nas_ip": basip.String(),
+		}).Warn("Received logout notification with nil user IP")
 		return
 	}
 
-	log.Printf("got a logout notification of %s from nas %s", userip, basip)
+	log.WithFields(logrus.Fields{
+		"user_ip": userip.String(),
+		"nas_ip":  basip.String(),
+	}).Info("Received logout notification")
 	portal.AckNtfLogout(userip, viper.GetString("huawei.secret"), basip, viper.GetInt("huawei.nas_port"), msg.SerialId(), msg.ReqId())
 }

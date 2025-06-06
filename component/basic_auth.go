@@ -34,8 +34,8 @@ type AuthInfo struct {
 	NasIP net.IP
 }
 
-type AuthServer struct {
-	authing_user map[string]*AuthInfo
+type Authenticator struct {
+	authUserInfo map[string]*AuthInfo
 	smsProvider  sms.SMSProvider
 	redisClient  *redis.Client
 	log          *logrus.Logger
@@ -58,13 +58,13 @@ func validatePhone(phone string) bool {
 	return matched
 }
 
-var BASIC_SERVICE = new(AuthServer)
+var BasicAuthHandler = new(Authenticator)
 
-func InitBasic() {
+func InitAuthenticator() {
 	log := logger.GetLogger()
 
-	BASIC_SERVICE = &AuthServer{
-		authing_user: make(map[string]*AuthInfo),
+	BasicAuthHandler = &Authenticator{
+		authUserInfo: make(map[string]*AuthInfo),
 		log:          log,
 	}
 
@@ -83,10 +83,15 @@ func InitBasic() {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Warning: Failed to connect to Redis: %v", err)
+		log.WithFields(logrus.Fields{
+			"error": err,
+			"addr":  viper.GetString("redis.addr"),
+		}).Fatal("Failed to connect to Redis")
 	} else {
-		BASIC_SERVICE.redisClient = rdb
-		log.Printf("Redis connection initialized successfully at %s", viper.GetString("redis.addr"))
+		BasicAuthHandler.redisClient = rdb
+		log.WithFields(logrus.Fields{
+			"addr": viper.GetString("redis.addr"),
+		}).Info("Redis connection initialized successfully")
 	}
 
 	if viper.GetString("sms.provider") != "" {
@@ -102,15 +107,20 @@ func InitBasic() {
 
 		smsProvider, err := sms.NewSMSProvider(smsConfig)
 		if err != nil {
-			log.Fatalf("Warning: Failed to initialize SMS provider: %v", err)
+			log.WithFields(logrus.Fields{
+				"error":    err,
+				"provider": viper.GetString("sms.provider"),
+			}).Fatal("Failed to initialize SMS provider")
 		} else {
-			BASIC_SERVICE.smsProvider = smsProvider
-			log.Printf("SMS provider %s initialized successfully", viper.GetString("sms.provider"))
+			BasicAuthHandler.smsProvider = smsProvider
+			log.WithFields(logrus.Fields{
+				"provider": viper.GetString("sms.provider"),
+			}).Info("SMS provider initialized successfully")
 		}
 	}
 }
 
-func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
+func (a *Authenticator) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		handleResponse(w, http.StatusMethodNotAllowed, Response{
 			Message: "仅支持POST请求",
@@ -147,16 +157,21 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	username := []byte(r.FormValue("username"))
 	userpwd := []byte(r.FormValue("userpwd"))
 
-	a.log.Printf("got a login request from %s on nas %s", userip, nasip)
+	log := logger.WithRequest(r).WithFields(logrus.Fields{
+		"user_ip": userip,
+		"nas_ip":  nasip,
+	})
+	log.Info("Received login request")
 
 	if len(username) == 0 {
+		log.Warn("Empty username provided")
 		handleResponse(w, http.StatusBadRequest, Response{
 			Message: "用户名不能为空",
 		})
 		return
 	}
 
-	a.authing_user[string(username)] = &AuthInfo{
+	a.authUserInfo[string(username)] = &AuthInfo{
 		Name:  username,
 		Pwd:   userpwd,
 		Mac:   []byte{},
@@ -165,7 +180,10 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := Auth(userip, nasip, username, userpwd); err != nil {
-		a.log.Printf("Authentication failed: username %s in nas %s, err %v", username, nasip, err)
+		log.WithFields(logrus.Fields{
+			"username": string(username),
+			"error":    err,
+		}).Error("Authentication failed")
 		handleResponse(w, http.StatusUnauthorized, Response{
 			Message: "用户名或密码错误",
 		})
@@ -179,17 +197,24 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		formatmac := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(usermac_str, ":", ""), "-", ""))
 		key := MacSessionPfrefix + formatmac
 		if err := a.redisClient.SetEx(ctx, key, 1, MacSessionExpire).Err(); err != nil {
-			a.log.Printf("Failed to save mac to Redis: %v", err)
+			log.WithFields(logrus.Fields{
+				"error": err,
+				"mac":   usermac_str,
+			}).Error("Failed to save MAC to Redis")
 			handleResponse(w, http.StatusInternalServerError, Response{
 				Message: "系统错误，请稍后重试",
 			})
 			return
 		}
 	} else {
-		a.log.Printf("No MAC address provided for user %s on nas %s", username, nasip)
+		log.WithFields(logrus.Fields{
+			"username": string(username),
+		}).Info("No MAC address provided")
 	}
 
-	a.log.Printf("User %s logged in successfully from %s", username, nasip)
+	log.WithFields(logrus.Fields{
+		"username": string(username),
+	}).Info("User logged in successfully")
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "登录成功",
@@ -201,7 +226,7 @@ func (a *AuthServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
+func (a *Authenticator) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	nas := r.FormValue("nasip")
 	userip_str := r.FormValue("userip")
 
@@ -221,24 +246,30 @@ func (a *AuthServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.log.Printf("got a logout request from %s on nas %s", userip, nasip)
+	log := logger.WithRequest(r).WithFields(logrus.Fields{
+		"user_ip": userip,
+		"nas_ip":  nasip,
+	})
+	log.Info("Received logout request")
 
 	if _, err := Logout(userip, nasip); err != nil {
-		a.log.Printf("Logout failed: userip %s on nas %s, err %v", userip, nasip, err)
+		log.WithFields(logrus.Fields{
+			"error": err,
+		}).Error("Logout failed")
 		handleResponse(w, http.StatusConflict, Response{
 			Message: "登出请求失败，请稍后再试",
 		})
 		return
 	}
 
-	a.log.Printf("User %s logged out successfully from NAS %s", userip, nasip)
+	log.Info("User logged out successfully")
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "登出成功",
 	})
 }
 
-func (a *AuthServer) HandleRoot(w http.ResponseWriter, r *http.Request) {
+func (a *Authenticator) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	handleResponse(w, http.StatusOK, Response{
 		Message: "抱歉，您无权访问此页面。请通过正确的认证流程访问网络。",
 		Data: struct {
@@ -253,7 +284,7 @@ func (a *AuthServer) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
+func (a *Authenticator) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 
 	if a.smsProvider == nil {
 		handleResponse(w, http.StatusServiceUnavailable, Response{
@@ -295,12 +326,15 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 
 	code := fmt.Sprintf("%06d", rand.Intn(1000000))
 
+	log := logger.WithRequest(r).WithFields(logrus.Fields{
+		"phone": req.Phone,
+	})
+
 	if err := a.smsProvider.SendCode(req.Phone, code); err != nil {
-		a.log.Printf("Failed to send SMS to %s: provider=%s, error=%v",
-			req.Phone,
-			viper.GetString("sms.provider"),
-			err,
-		)
+		log.WithFields(logrus.Fields{
+			"error":    err,
+			"provider": viper.GetString("sms.provider"),
+		}).Error("Failed to send SMS")
 		handleResponse(w, http.StatusInternalServerError, Response{
 			Message: "发送验证码失败，请稍后重试",
 		})
@@ -312,14 +346,16 @@ func (a *AuthServer) HandleSendCode(w http.ResponseWriter, r *http.Request) {
 
 	key := SMSCodePrefix + req.Phone
 	if err := a.redisClient.SetEx(ctx, key, code, SMSCodeExpire).Err(); err != nil {
-		a.log.Printf("Failed to save code to Redis: %v", err)
+		log.WithFields(logrus.Fields{
+			"error": err,
+		}).Error("Failed to save code to Redis")
 		handleResponse(w, http.StatusInternalServerError, Response{
 			Message: "系统错误，请稍后重试",
 		})
 		return
 	}
 
-	a.log.Printf("Successfully sent SMS code to %s", req.Phone)
+	log.Info("Successfully sent SMS code")
 
 	handleResponse(w, http.StatusOK, Response{
 		Message: "验证码已发送",

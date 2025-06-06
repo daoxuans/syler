@@ -98,7 +98,7 @@ func ListenAndService(addr string) (err error) {
 			if c, ok := expect[message.SerialId()]; ok {
 				c <- message
 			} else {
-				log.Print("get a active message")
+				log.Print("get a active message, type: ", message.Type())
 				cb_fallback(message, saddr.IP)
 			}
 		}(data[:n])

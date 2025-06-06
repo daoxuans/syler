@@ -11,11 +11,11 @@ huawei:
   nas_port: 2000
 
 sms:
-  provider: "tencent"
+  provider: "aliyun"
   access_key: ""
   secret_key: ""
-  sign_name: ""
-  template_code: ""
+  sign_name: "阿里云短信测试"
+  template_code: "SMS_154950909"
   region: "ap-guangzhou"
   sdk_app_id: ""
 

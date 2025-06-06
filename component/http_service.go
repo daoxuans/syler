@@ -8,6 +8,7 @@ import (
 	"daoxuans/syler/i"
 	"daoxuans/syler/logger"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -22,7 +23,7 @@ func StartHttp() {
 		if handler, ok := i.ExtraAuth.(i.HttpLoginHandler); ok {
 			handler.HandleLogin(w, r)
 		} else {
-			BASIC_SERVICE.HandleLogin(w, r)
+			BasicAuthHandler.HandleLogin(w, r)
 		}
 	})
 	http.HandleFunc("/api/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +33,7 @@ func StartHttp() {
 		if handler, ok := i.ExtraAuth.(i.HttpLogoutHandler); ok {
 			handler.HandleLogout(w, r)
 		} else {
-			BASIC_SERVICE.HandleLogout(w, r)
+			BasicAuthHandler.HandleLogout(w, r)
 		}
 	})
 	http.HandleFunc("/api/sendcode", func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +43,7 @@ func StartHttp() {
 		if handler, ok := i.ExtraAuth.(i.HttpSendCodeHandler); ok {
 			handler.HandleSendCode(w, r)
 		} else {
-			BASIC_SERVICE.HandleSendCode(w, r)
+			BasicAuthHandler.HandleSendCode(w, r)
 		}
 	})
 	if extrahttp, ok := i.ExtraAuth.(i.ExtraHttpHandler); ok {
@@ -55,7 +56,7 @@ func StartHttp() {
 		if handler, ok := i.ExtraAuth.(i.HttpRootHandler); ok {
 			handler.HandleRoot(w, r)
 		} else {
-			BASIC_SERVICE.HandleRoot(w, r)
+			BasicAuthHandler.HandleRoot(w, r)
 		}
 	})
 
@@ -67,9 +68,14 @@ func StartHttp() {
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
-	log.Printf("listen http server on %d", viper.GetInt("http.port"))
+	log.WithFields(logrus.Fields{
+		"port": viper.GetInt("http.port"),
+	}).Info("Starting HTTP server")
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("Failed to start HTTP server on port %d: %v", viper.GetInt("http.port"), err)
+		log.WithFields(logrus.Fields{
+			"error": err,
+			"port":  viper.GetInt("http.port"),
+		}).Fatal("Failed to start HTTP server")
 	}
 }

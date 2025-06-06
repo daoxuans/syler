@@ -2,6 +2,7 @@ package logger
 
 import (
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -44,4 +45,15 @@ func Init(filePath string, level string, maxSize int, maxBackups int) error {
 
 func GetLogger() *logrus.Logger {
 	return log
+}
+
+// WithRequest creates a new logger with request context
+func WithRequest(r *http.Request) *logrus.Entry {
+	if r == nil {
+		return log.WithFields(logrus.Fields{})
+	}
+	return log.WithFields(logrus.Fields{
+		"method": r.Method,
+		"path":   r.URL.Path,
+	})
 }

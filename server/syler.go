@@ -9,6 +9,7 @@ import (
 	"daoxuans/syler/component"
 	"daoxuans/syler/logger"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -40,7 +41,7 @@ func main() {
 	log := logger.GetLogger()
 
 	// Initialize basic components
-	component.InitBasic()
+	component.InitAuthenticator()
 
 	// Handle graceful shutdown
 	shutdown := make(chan struct{})
@@ -49,7 +50,9 @@ func main() {
 
 	go func() {
 		<-sigChan
-		log.Info("Shutting down server...")
+		log.WithFields(logrus.Fields{
+			"signal": "SIGTERM/SIGINT",
+		}).Info("Shutting down server")
 		close(shutdown)
 	}()
 
