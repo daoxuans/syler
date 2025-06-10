@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"daoxuans/syler/component"
-	"daoxuans/syler/logger"
+	"syler/internal/logger"
+	"syler/internal/server"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -41,7 +41,7 @@ func main() {
 	log := logger.GetLogger()
 
 	// Initialize basic components
-	component.InitAuthenticator()
+	server.InitAuthenticator()
 
 	// Handle graceful shutdown
 	shutdown := make(chan struct{})
@@ -57,10 +57,10 @@ func main() {
 	}()
 
 	// Start portal server
-	go component.StartHuawei()
+	go server.StartPortal()
 
 	// Start HTTP server
-	go component.StartHttp()
+	go server.StartHttp()
 
 	<-shutdown
 }

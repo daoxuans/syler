@@ -19,7 +19,7 @@ WX5000
 ## 下载
 ### 从源码安装
 
-* go get github.com/daoxuans/syler
+* go get github.com/syler
 
 ## Login接口
     通过调用相关接口上层应用可以实现不同ip、不同用户的上线和下线
@@ -75,7 +75,7 @@ remote_ip_as_user_ip=false   # 是否使用请求的L3 IP作为用户ip
 nas_ip=""                    # 强制所有请求的nasip为该值
 white_list=""               # IP白名单，多个IP用逗号分隔
 
-[huawei]
+[portal]
 port=50100                  # Portal服务端口
 version=2                   # Portal协议版本
 secret="syler"             # 共享密钥

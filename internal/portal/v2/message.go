@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	"daoxuans/syler/huawei/portal"
+	"syler/internal/portal"
 )
 
 type T_Message struct {

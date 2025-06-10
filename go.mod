@@ -1,4 +1,4 @@
-module daoxuans/syler
+module syler
 
 go 1.22.8
 

@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"net"
 
-	"daoxuans/syler/huawei/portal"
+	"syler/internal/portal"
 )
 
 type Version struct{}

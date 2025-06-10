@@ -1,4 +1,4 @@
-package component
+package server
 
 import (
 	"context"
@@ -15,8 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
-	"daoxuans/syler/logger"
-	"daoxuans/syler/sms"
+	"syler/internal/logger"
+	"syler/internal/sms"
 )
 
 const (
@@ -58,12 +58,12 @@ func validatePhone(phone string) bool {
 	return matched
 }
 
-var BasicAuthHandler = new(Authenticator)
+var AuthHandler = new(Authenticator)
 
 func InitAuthenticator() {
 	log := logger.GetLogger()
 
-	BasicAuthHandler = &Authenticator{
+	AuthHandler = &Authenticator{
 		authUserInfo: make(map[string]*AuthInfo),
 		log:          log,
 	}
@@ -88,7 +88,7 @@ func InitAuthenticator() {
 			"addr":  viper.GetString("redis.addr"),
 		}).Fatal("Failed to connect to Redis")
 	} else {
-		BasicAuthHandler.redisClient = rdb
+		AuthHandler.redisClient = rdb
 		log.WithFields(logrus.Fields{
 			"addr": viper.GetString("redis.addr"),
 		}).Info("Redis connection initialized successfully")
@@ -112,7 +112,7 @@ func InitAuthenticator() {
 				"provider": viper.GetString("sms.provider"),
 			}).Fatal("Failed to initialize SMS provider")
 		} else {
-			BasicAuthHandler.smsProvider = smsProvider
+			AuthHandler.smsProvider = smsProvider
 			log.WithFields(logrus.Fields{
 				"provider": viper.GetString("sms.provider"),
 			}).Info("SMS provider initialized successfully")
