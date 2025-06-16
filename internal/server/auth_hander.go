@@ -196,7 +196,7 @@ func (a *Authenticator) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 		formatmac := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(usermac_str, ":", ""), "-", ""))
 		key := MacSessionPfrefix + formatmac
-		if err := a.redisClient.SetEx(ctx, key, 1, MacSessionExpire).Err(); err != nil {
+		if err := a.redisClient.SetEx(ctx, key, string(username), MacSessionExpire).Err(); err != nil {
 			log.WithFields(logrus.Fields{
 				"error": err,
 				"mac":   usermac_str,
