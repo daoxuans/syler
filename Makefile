@@ -1,14 +1,14 @@
-build: buildlinux
+default: build
 
-buildwin64:
-	-rm ./bin/sylerwin64.exe
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ./bin/sylerwin64.exe ./cmds/syler/main.go
-	-upx -9 ./bin/sylerwin64.exe
+buildarm64:
+	-rm ./bin/syler.arm64
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o ./bin/syler.arm64 ./cmds/syler/main.go
+	-upx -9 ./bin/syler.arm64
 
-buildlinux:
-	-rm ./bin/sylerlinux
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/sylerlinux ./cmds/syler/main.go
-	-upx -9 ./bin/sylerlinux
+build:
+	-rm ./bin/syler
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/syler ./cmds/syler/main.go
+	-upx -9 ./bin/syler
 
 clean:
 	-rm ./bin -rf
