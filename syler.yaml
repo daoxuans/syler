@@ -22,7 +22,7 @@ sms:
 redis:
   addr: "localhost:6379"
   db: 0
-  password: "A4vSK1B18IcRPNmvEASgL3E955emH2hzmWdJd"
+  password: "c2hpZGFveHVhbmRldnRlYW0="
 
 logging:
   # Log file path
